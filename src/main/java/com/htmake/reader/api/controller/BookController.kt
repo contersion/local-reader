@@ -289,7 +289,11 @@ class BookController(coroutineContext: CoroutineContext): BaseController(corouti
         }
         book.setRootDir(getWorkDir())
         book.setUserNameSpace(getUserNameSpace(context))
-        val chapters = LocalBook.getChapterList(book)
+        val chapters = try {
+            LocalBook.getChapterList(book)
+        } catch (e: TocEmptyException) {
+            return returnData.setErrorMsg("目录规则未匹配到任何章节")
+        }
         return returnData.setData(mapOf("book" to book, "chapters" to chapters))
     }
 

@@ -1,0 +1,14 @@
+services:
+  reader:
+    image: hectorqin/reader:openj9-latest
+    container_name: reader-local
+    restart: unless-stopped
+    ports:
+      - "18080:8080"
+    volumes:
+      - ./docker/reader/logs:/logs
+      - ./docker/reader/storage:/storage
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      READER_APP_CACHECHAPTERCONTENT: "true"
+      READER_APP_SECURE: "false"

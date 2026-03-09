@@ -1,0 +1,16 @@
+services:
+  reader:
+    build:
+      context: .
+      dockerfile: Dockerfile.source
+    image: reader-source:local
+
+  watchtower:
+    command:
+      - --api-version
+      - "${WATCHTOWER_API_VERSION:-1.53}"
+      - --cleanup
+      - --schedule
+      - "${WATCHTOWER_SCHEDULE:-0 0 4 * * *}"
+      - readerwebview
+      - watchtower

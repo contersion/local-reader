@@ -3,6 +3,7 @@ package io.legado.app.model.localBook
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.TxtTocRule
+import io.legado.app.exception.TocEmptyException
 import io.legado.app.help.DefaultData
 import io.legado.app.utils.EncodingDetect
 import io.legado.app.utils.MD5Utils
@@ -20,6 +21,13 @@ private val logger = KotlinLogging.logger {}
 class TextFile(private val book: Book) {
 
     companion object {
+        private val chapterTitleKeywordRegex = Regex(
+            "^(?:[Cc]hapter|[Ss]ection|[Pp]art|[Ee]pisode|[Nn][Oo]\\.?|第?\\s{0,4}[\\d〇零一二两三四五六七八九十百千万壹贰叁肆伍陆柒捌玖拾佰仟]{1,8}\\s{0,4}(?:章|节(?!课)|话|回|幕|场)).*$"
+        )
+
+        private val customRuleVolumeTitleRegex = Regex(
+            "^(?:序章|序言|卷首语|扉页|楔子|前言|正文(?!完|结)|终章|后记|尾声|番外(?:\\s*[\\dA-Za-z〇零一二两三四五六七八九十百千万壹贰叁肆伍陆柒捌玖拾佰仟]{0,6})?|第?\\s{0,4}[\\dA-Za-z〇零一二两三四五六七八九十百千万壹贰叁肆伍陆柒捌玖拾佰仟]{1,8}\\s{0,4}(?:卷|集(?![合和])|部(?![分赛游])|篇(?!张)|册)|[上中下终尾全]\\s*(?:卷|集|部|篇|册))(?:\\s{1,2}[^\\s：:,.，、_—\\-·]{1,10})?$"
+        )
 
         @Throws(FileNotFoundException::class)
         fun getChapterList(book: Book): ArrayList<BookChapter> {
@@ -40,6 +48,33 @@ class TextFile(private val book: Book) {
             return String(buffer, book.fileCharset())
                 .substringAfter(bookChapter.title)
                 .replace("^[\\n\\s]+".toRegex(), "　　")
+        }
+
+        internal fun shouldTreatAsVolume(
+            chapterTitle: String,
+            chapterContent: String,
+            strictCustomRule: Boolean
+        ): Boolean {
+            val contentAfterTitle = chapterContent
+                .substringAfter(chapterTitle, chapterContent)
+                .replace("[\\s　]+".toRegex(), "")
+            if (contentAfterTitle.isNotEmpty()) {
+                return false
+            }
+            if (!strictCustomRule) {
+                return true
+            }
+            val normalizedTitle = StringUtils.trim(chapterTitle).replace("\\s+".toRegex(), " ")
+            if (normalizedTitle.isEmpty() || normalizedTitle.length > 20) {
+                return false
+            }
+            if (normalizedTitle.contains("[：:,.，、_—\\-·]".toRegex())) {
+                return false
+            }
+            if (chapterTitleKeywordRegex.matches(normalizedTitle)) {
+                return false
+            }
+            return customRuleVolumeTitleRegex.matches(normalizedTitle)
         }
 
     }
@@ -77,6 +112,9 @@ class TextFile(private val book: Book) {
             }
         }
         val toc = analyze(book.tocUrl.toPattern(Pattern.MULTILINE))
+        if (toc.isEmpty()) {
+            throw TocEmptyException("目录规则未匹配到任何章节")
+        }
         toc.forEachIndexed { index, bookChapter ->
             bookChapter.index = index
             bookChapter.bookUrl = book.bookUrl
@@ -95,6 +133,7 @@ class TextFile(private val book: Book) {
             return analyze()
         }
         pattern ?: return analyze()
+        val strictCustomRule = DefaultData.txtTocRules.none { it.rule == pattern.pattern() }
         val toc = arrayListOf<BookChapter>()
         LocalBook.getBookInputStream(book).use { bis ->
             var blockContent: String
@@ -188,8 +227,11 @@ class TextFile(private val book: Book) {
                         } else { //否则就block分割之后，上一个章节的剩余内容
                             //获取上一章节
                             val lastChapter = toc.last()
-                            lastChapter.isVolume =
-                                chapterContent.substringAfter(lastChapter.title).isBlank()
+                            lastChapter.isVolume = shouldTreatAsVolume(
+                                lastChapter.title,
+                                chapterContent,
+                                strictCustomRule
+                            )
                             //将当前段落添加上一章去
                             lastChapter.end =
                                 lastChapter.end!! + chapterLength.toLong()
@@ -203,8 +245,11 @@ class TextFile(private val book: Book) {
                         if (toc.isNotEmpty()) { //获取章节内容
                             //获取上一章节
                             val lastChapter = toc.last()
-                            lastChapter.isVolume =
-                                chapterContent.substringAfter(lastChapter.title).isBlank()
+                            lastChapter.isVolume = shouldTreatAsVolume(
+                                lastChapter.title,
+                                chapterContent,
+                                strictCustomRule
+                            )
                             lastChapter.end =
                                 lastChapter.start!! + chapterContent.toByteArray(charset).size.toLong()
                             //创建当前章节

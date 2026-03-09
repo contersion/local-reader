@@ -47,6 +47,14 @@ out
 
 /simple-web/
 
+.env
+.env.prod
+docker/reader/logs/
+docker/reader/storage/assets/
+docker/reader/storage/cache/
+docker/reader/storage/data/
+docker/reader/storage/localStore/
+
 /server/logs
 /server/storage
 /server/target
