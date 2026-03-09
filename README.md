@@ -1,5 +1,8 @@
 # reader
 
+基于原项目维护的本地补丁版
+
+
 阅读3服务器版，不需要手机。
 
 加入TG群(限时开放) 👉 [https://t.me/+pQ8HDlANPZ84ZWNl](https://t.me/+pQ8HDlANPZ84ZWNl)
