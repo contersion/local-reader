@@ -358,10 +358,10 @@ export default {
     overflow: auto;
 
     .cata {
-      display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0 26px;
+      align-content: start;
 
       .cached {
         color: #444;
@@ -372,14 +372,13 @@ export default {
       }
 
       .log {
-        width: 50%;
+        width: auto;
+        min-width: 0;
         height: 40px;
         cursor: pointer;
-        float: left;
         font: 16px / 40px PingFangSC-Regular, HelveticaNeue-Light, 'Helvetica Neue Light', 'Microsoft YaHei', sans-serif;
 
         .log-text {
-          margin-right: 26px;
           overflow: hidden;
           white-space: nowrap;
           text-overflow: ellipsis;
@@ -409,11 +408,12 @@ export default {
   }
 }
 @media screen and (max-width: 500px) {
-  .popup-wrapper .data-wrapper .cata .log {
-    width: 100%;
-
-    .log-text {
-      margin-right: 0;
+  .popup-wrapper {
+    .data-wrapper {
+      .cata {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+      }
     }
   }
 }

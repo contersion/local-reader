@@ -23,6 +23,43 @@ export const formatSize = function(value, scale) {
   return size + " " + unitArr[index];
 };
 
+export const buildURL = function(url, params = {}) {
+  const parts = [];
+
+  const append = function(key, value) {
+    if (value === null || typeof value === "undefined") {
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach(item => append(key, item));
+      return;
+    }
+    if (Object.prototype.toString.call(value) === "[object Date]") {
+      value = value.toISOString();
+    } else if (value && typeof value === "object") {
+      value = JSON.stringify(value);
+    }
+    parts.push(
+      encodeURIComponent(key) + "=" + encodeURIComponent(value).replace(/%20/g, "+")
+    );
+  };
+
+  Object.keys(params).forEach(key => {
+    append(key, params[key]);
+  });
+
+  if (!parts.length) {
+    return url;
+  }
+
+  const hashIndex = url.indexOf("#");
+  if (hashIndex !== -1) {
+    url = url.slice(0, hashIndex);
+  }
+
+  return url + (url.indexOf("?") === -1 ? "?" : "&") + parts.join("&");
+};
+
 export const LimitResquest = function(limit, process) {
   let currentSum = 0;
   let requests = [];

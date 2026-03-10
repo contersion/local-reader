@@ -1010,8 +1010,7 @@ import Axios from "../plugins/axios";
 import { errorTypeList } from "../plugins/config";
 import { setCache, getCache } from "../plugins/cache";
 import eventBus from "../plugins/eventBus";
-import { formatSize, LimitResquest } from "../plugins/helper";
-const buildURL = require("axios/lib/helpers/buildURL");
+import { formatSize, LimitResquest, buildURL } from "../plugins/helper";
 import { isInContainer } from "element-ui/src/utils/dom";
 import Vue from "vue";
 
@@ -3253,9 +3252,10 @@ export default {
       overflow-y: scroll;
 
       .wrapper {
-        display: grid ;
-        grid-template-columns: repeat(auto-fill, 380px);
-        justify-content: space-around;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(360px, 360px));
+        justify-content: center;
+        align-content: start;
         grid-gap: 10px;
 
         .book {
@@ -3348,9 +3348,6 @@ export default {
         }
       }
 
-      .wrapper:last-child {
-        margin-right: auto;
-      }
     }
 
     .books-wrapper::-webkit-scrollbar {

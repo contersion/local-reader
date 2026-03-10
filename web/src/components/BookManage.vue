@@ -167,8 +167,7 @@
 import { mapGetters } from "vuex";
 import Axios from "../plugins/axios";
 import eventBus from "../plugins/eventBus";
-const buildURL = require("axios/lib/helpers/buildURL");
-import { LimitResquest } from "../plugins/helper";
+import { LimitResquest, buildURL } from "../plugins/helper";
 
 export default {
   model: {

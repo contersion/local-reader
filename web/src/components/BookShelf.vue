@@ -211,9 +211,14 @@ export default {
     overflow: auto;
 
     .shelfbook-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0 24px;
+      align-content: start;
 
       .book-item {
-        width: 100%;
+        width: auto;
+        min-width: 0;
         cursor: pointer;
         display: flex;
         flex-direction: column;
@@ -281,6 +286,17 @@ export default {
   .day {
     >>>.book-item {
       border-bottom: 1px solid #eee;
+    }
+  }
+}
+
+@media screen and (max-width: 500px) {
+  .popup-wrapper {
+    .data-wrapper {
+      .shelfbook-list {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+      }
     }
   }
 }
