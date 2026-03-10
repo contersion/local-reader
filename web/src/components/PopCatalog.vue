@@ -142,6 +142,22 @@ export default {
     }
   },
   methods: {
+    refreshTxtTocRules() {
+      if (!this.book || !this.book.originName) {
+        return Promise.resolve();
+      }
+      if (!this.book.originName.toLowerCase().endsWith(".txt")) {
+        return Promise.resolve();
+      }
+      return Axios.get("/getTxtTocRules")
+        .then(res => {
+          if (res.data && res.data.isSuccess) {
+            const data = res.data.data || [];
+            this.$store.commit("setTxtTocRules", data);
+          }
+        })
+        .catch(() => {});
+    },
     isSelected(index) {
       if (this.asc) {
         return index == this.$store.getters.readingBook.index;
@@ -162,6 +178,7 @@ export default {
       this.$emit("refresh");
     },
     async changeRule() {
+      await this.refreshTxtTocRules();
       const res = await this.$msgbox({
         title: "修改目录规则",
         message: this.renderComp(),

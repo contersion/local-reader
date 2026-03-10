@@ -594,7 +594,7 @@ export default {
       );
     },
     loadTxtTocRules() {
-      return cacheFirstRequest(
+      return networkFirstRequest(
         () => Axios.get("/getTxtTocRules"),
         "txtTocRules"
       ).then(
