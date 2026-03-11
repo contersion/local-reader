@@ -1,14 +1,23 @@
 FROM node:16-alpine AS build-web
 ADD . /app
 WORKDIR /app/web
-# Build web
-RUN yarn --ignore-engines && yarn build
+# Reuse a local dist when available, otherwise build it in-container.
+RUN \
+    if [ -f dist/index.html ]; then \
+        mkdir -p /web-dist; \
+        cp -a dist/. /web-dist/; \
+    else \
+        yarn --ignore-engines; \
+        yarn build; \
+        mkdir -p /web-dist; \
+        cp -a dist/. /web-dist/; \
+    fi
 
 # Build jar
 FROM gradle:6.1.1-jdk8 AS build-env
 ADD --chown=gradle:gradle . /app
 WORKDIR /app
-COPY --from=build-web /app/web/dist /app/src/main/resources/web
+COPY --from=build-web /web-dist /app/src/main/resources/web
 RUN \
     rm src/main/java/com/htmake/reader/ReaderUIApplication.kt; \
     gradle -b cli.gradle assemble --info; \

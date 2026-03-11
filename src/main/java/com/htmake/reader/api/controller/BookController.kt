@@ -339,8 +339,9 @@ class BookController(coroutineContext: CoroutineContext): BaseController(corouti
         var refresh: Int = 0
         if (context.request().method() == HttpMethod.POST) {
             // post 请求
-            bookUrl = context.bodyAsJson.getString("url") ?: context.bodyAsJson.getJsonObject("book").getString("bookUrl") ?: ""
-            refresh = context.bodyAsJson.getInteger("refresh", 0)
+            val body = context.bodyAsJson
+            bookUrl = body?.getString("url") ?: body?.getJsonObject("book")?.getString("bookUrl") ?: ""
+            refresh = body?.getInteger("refresh") ?: 0
         } else {
             // get 请求
             bookUrl = context.queryParam("url").firstOrNull() ?: ""
@@ -400,8 +401,9 @@ class BookController(coroutineContext: CoroutineContext): BaseController(corouti
         var chapterIndex: Int
         if (context.request().method() == HttpMethod.POST) {
             // post 请求
-            bookUrl = context.bodyAsJson.getString("url") ?: context.bodyAsJson.getJsonObject("searchBook").getString("bookUrl") ?: ""
-            chapterIndex = context.bodyAsJson.getInteger("index", -1)
+            val body = context.bodyAsJson
+            bookUrl = body?.getString("url") ?: body?.getJsonObject("searchBook")?.getString("bookUrl") ?: ""
+            chapterIndex = body?.getInteger("index") ?: -1
         } else {
             // get 请求
             bookUrl = context.queryParam("url").firstOrNull() ?: ""
@@ -445,11 +447,12 @@ class BookController(coroutineContext: CoroutineContext): BaseController(corouti
         var refresh: Int
         if (context.request().method() == HttpMethod.POST) {
             // post 请求
-            chapterUrl = context.bodyAsJson.getString("chapterUrl") ?: context.bodyAsJson.getJsonObject("bookChapter")?.getString("url") ?: ""
-            bookUrl = context.bodyAsJson.getString("url") ?: context.bodyAsJson.getJsonObject("searchBook")?.getString("bookUrl") ?: ""
-            chapterIndex = context.bodyAsJson.getInteger("index", -1)
-            cache = context.bodyAsJson.getInteger("cache", 0)
-            refresh = context.bodyAsJson.getInteger("refresh", 0)
+            val body = context.bodyAsJson
+            chapterUrl = body?.getString("chapterUrl") ?: body?.getJsonObject("bookChapter")?.getString("url") ?: ""
+            bookUrl = body?.getString("url") ?: body?.getJsonObject("searchBook")?.getString("bookUrl") ?: ""
+            chapterIndex = body?.getInteger("index") ?: -1
+            cache = body?.getInteger("cache") ?: 0
+            refresh = body?.getInteger("refresh") ?: 0
         } else {
             // get 请求
             chapterUrl = context.queryParam("chapterUrl").firstOrNull() ?: ""

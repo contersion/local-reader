@@ -133,7 +133,7 @@ class TextFile(private val book: Book) {
             return analyze()
         }
         pattern ?: return analyze()
-        val strictCustomRule = DefaultData.txtTocRules.none { it.rule == pattern.pattern() }
+        val strictCustomRule = !DefaultData.isBuiltinTxtTocRule(pattern.pattern())
         val toc = arrayListOf<BookChapter>()
         LocalBook.getBookInputStream(book).use { bis ->
             var blockContent: String

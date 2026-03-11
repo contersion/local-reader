@@ -36,6 +36,10 @@ object DefaultData {
     val txtTocRules: List<TxtTocRule>
         get() = loadTxtTocRulesCached()
 
+    internal fun isBuiltinTxtTocRule(rule: String): Boolean {
+        return builtinTxtTocRules.any { it.rule == rule }
+    }
+
     private fun loadTxtTocRulesCached(): List<TxtTocRule> {
         val externalFile = externalTxtTocRulesFile()
         val key = txtTocRulesCacheKey(externalFile)

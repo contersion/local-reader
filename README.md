@@ -60,6 +60,24 @@
 
 详见[文档](https://github.com/hectorqin/reader/blob/master/doc.md)
 
+## 本地测试
+
+本仓库当前的 Gradle 测试链路建议使用 `JDK 11`。为避免和本机其它 Java 版本冲突，可以直接使用仓库内的 PowerShell 脚本，它会自动查找 `JDK 11`、设置临时 `JAVA_HOME`、停止旧的 Gradle daemon，并转发后续参数。
+
+Windows 下运行全部测试：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\gradle-jdk11.ps1 test
+```
+
+只运行本次左右边距问题对应的回归测试：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\gradle-jdk11.ps1 test --tests io.legado.app.model.localBook.TextFileTest
+```
+
+如果脚本没有找到 `JDK 11`，可以先设置用户环境变量 `JAVA11_HOME`，或者把 JDK 解压到 `%USERPROFILE%\.jdks` 目录下。测试报告默认输出到 `build/test-results/test/`。
+
 ## 问题
 
 - 部分使用了 `Javascript` 的书源可能会报错，如调用原生java等高级Javascript功能

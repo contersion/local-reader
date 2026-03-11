@@ -645,6 +645,14 @@ export default {
       }
     },
     readingBook(val, oldVal) {
+      oldVal = oldVal || {};
+      if (this.pendingInit && val && val.bookUrl) {
+        this.pendingInit = false;
+        this.$nextTick(() => {
+          this.init(true);
+        });
+        return;
+      }
       if (val.bookUrl !== oldVal.bookUrl) {
         this.startSavePosition = false;
         this.autoShowPosition();
@@ -702,9 +710,13 @@ export default {
       showToolBar: true,
       book: null,
       show: false,
+      pendingInit: false,
       contentStyle: {},
       currentPage: 1,
       totalPages: 1,
+      slidePageWidth: 0,
+      slideContentWidth: 0,
+      slideColumnGap: 0,
       transformX: 0,
       transforming: false,
       showLastPage: false,
@@ -796,18 +808,55 @@ export default {
         ? "audio"
         : "";
     },
+    slidePaddingLeft() {
+      return 16 + ((this.$store.state.safeArea || {}).left | 0);
+    },
+    slidePaddingRight() {
+      return 16 + ((this.$store.state.safeArea || {}).right | 0);
+    },
+    slidePageWidthValue() {
+      return this.slidePageWidth || this.windowSize.width;
+    },
+    slideContentWidthValue() {
+      return (
+        this.slideContentWidth ||
+        Math.max(
+          this.slidePageWidthValue -
+            this.slidePaddingLeft -
+            this.slidePaddingRight,
+          1
+        )
+      );
+    },
+    slideColumnGapValue() {
+      return (
+        this.slideColumnGap ||
+        Math.max(this.slidePageWidthValue - this.slideContentWidthValue, 0)
+      );
+    },
     chapterTheme() {
       let readingStyle = this.showReadBar
         ? { paddingBottom: (this.showSpeechConfig ? 280 : 80) + "px" }
         : {};
+      const slideTheme = this.$store.state.miniInterface
+        ? {
+            "--slide-padding-left": this.slidePaddingLeft + "px",
+            "--slide-padding-right": this.slidePaddingRight + "px",
+            "--slide-page-width": this.slidePageWidthValue + "px",
+            "--slide-content-width": this.slideContentWidthValue + "px",
+            "--slide-column-gap": this.slideColumnGapValue + "px"
+          }
+        : {};
       if (typeof this.$store.getters.currentThemeConfig.content === "string") {
         return {
+          ...slideTheme,
           ...readingStyle,
           background: this.$store.getters.currentThemeConfig.content,
           width: this.readWidth
         };
       } else {
         return {
+          ...slideTheme,
           ...readingStyle,
           ...this.$store.getters.currentThemeConfig.content,
           width: this.readWidth
@@ -1049,46 +1098,47 @@ export default {
   },
   methods: {
     init(refresh) {
-      if (this.$store.getters.readingBook) {
-        if (
-          refresh ||
-          !this.lastReadingBook ||
-          this.lastReadingBook.bookUrl !==
-            this.$store.getters.readingBook.bookUrl
-        ) {
-          this.title = "";
-          this.show = false;
-          this.loading = this.$loading({
-            target: this.$refs.content,
-            lock: true,
-            text: "正在获取内容",
-            spinner: "el-icon-loading",
-            background: "rgba(0,0,0,0)"
-          });
-          this.lastReadingBook = this.$store.getters.readingBook;
-          // 跳转记住的位置
-          this.autoShowPosition();
-          this.loadCatalog(false, true);
-        } else {
-          if (this.isScrollRead) {
-            this.scrollStartChapterIndex = this.chapterIndex;
-            this.showPrevChapterSize = 0;
-            this.computeShowChapterList().then(() => {
-              this.autoShowPosition(true);
-            });
-          } else if (this.isEpub) {
-            // 跳转记住的位置
-            this.autoShowPosition(true);
-          } else {
-            this.startSavePosition = true;
-          }
-          setTimeout(() => {
-            // console.log("setReadingBook", this.lastReadingBook);
-            this.$store.commit("setReadingBook", this.lastReadingBook);
-          }, 100);
-        }
+      const readingBook = this.$store.getters.readingBook || {};
+      if (!readingBook.bookUrl) {
+        this.pendingInit = true;
+        return;
+      }
+      this.pendingInit = false;
+      if (
+        refresh ||
+        !this.lastReadingBook ||
+        this.lastReadingBook.bookUrl !== readingBook.bookUrl
+      ) {
+        this.title = "";
+        this.show = false;
+        this.loading = this.$loading({
+          target: this.$refs.content,
+          lock: true,
+          text: "正在获取内容",
+          spinner: "el-icon-loading",
+          background: "rgba(0,0,0,0)"
+        });
+        this.lastReadingBook = readingBook;
+        // 跳转记住的位置
+        this.autoShowPosition();
+        this.loadCatalog(false, true);
       } else {
-        this.$message.error("请在书架选择书籍");
+        if (this.isScrollRead) {
+          this.scrollStartChapterIndex = this.chapterIndex;
+          this.showPrevChapterSize = 0;
+          this.computeShowChapterList().then(() => {
+            this.autoShowPosition(true);
+          });
+        } else if (this.isEpub) {
+          // 跳转记住的位置
+          this.autoShowPosition(true);
+        } else {
+          this.startSavePosition = true;
+        }
+        setTimeout(() => {
+          // console.log("setReadingBook", this.lastReadingBook);
+          this.$store.commit("setReadingBook", this.lastReadingBook);
+        }, 100);
       }
     },
     changeBook(book) {
@@ -1109,7 +1159,7 @@ export default {
       if (!this.api) {
         setTimeout(() => {
           if (this.loadCatalog) {
-            this.loadCatalog(refresh);
+            this.loadCatalog(refresh, init);
           }
         }, 1000);
         return;
@@ -1135,6 +1185,13 @@ export default {
           }
         },
         error => {
+          if (init) {
+            this.title = "";
+            this.content = "获取章节目录失败！\n" + (error && error.toString());
+            this.error = true;
+            this.show = true;
+            this.$emit("showContent");
+          }
           this.loading.close();
           this.$message.error(
             "获取书籍目录列表 " + (error && error.toString())
@@ -1143,6 +1200,9 @@ export default {
       );
     },
     getCatalog(refresh) {
+      if (!this.$store.getters.readingBook.bookUrl) {
+        return Promise.reject(new Error("正在恢复阅读进度，请稍后重试"));
+      }
       const params = {
         url: this.$store.getters.readingBook.bookUrl,
         refresh: refresh ? 1 : 0
@@ -1555,6 +1615,47 @@ export default {
     toShelf() {
       this.$router.push("/");
     },
+    refreshSlideMetrics() {
+      const fallbackPageWidth = this.windowSize.width;
+      const fallbackContentWidth = Math.max(
+        fallbackPageWidth - this.slidePaddingLeft - this.slidePaddingRight,
+        1
+      );
+      if (!this.isSlideRead) {
+        this.slidePageWidth = fallbackPageWidth;
+        this.slideContentWidth = fallbackContentWidth;
+        this.slideColumnGap = Math.max(
+          fallbackPageWidth - fallbackContentWidth,
+          0
+        );
+        return;
+      }
+      let pageWidth = fallbackPageWidth;
+      if (this.$refs.content) {
+        const pageRect = this.$refs.content.getBoundingClientRect();
+        if (pageRect && pageRect.width) {
+          pageWidth = Math.round(pageRect.width);
+        }
+      }
+      let contentWidth = fallbackContentWidth;
+      const contentInner =
+        this.$refs.bookContentRef &&
+        this.$refs.bookContentRef.$el &&
+        this.$refs.bookContentRef.$el.parentElement;
+      if (contentInner) {
+        const contentRect = contentInner.getBoundingClientRect();
+        if (contentRect && contentRect.width) {
+          contentWidth = Math.round(contentRect.width);
+        }
+      }
+      contentWidth = Math.min(contentWidth, pageWidth);
+      this.slidePageWidth = pageWidth;
+      this.slideContentWidth = contentWidth;
+      this.slideColumnGap = Math.max(pageWidth - contentWidth, 0);
+    },
+    getSlidePageWidth() {
+      return this.slidePageWidthValue;
+    },
     computePages(cb) {
       if (!this.$refs.bookContentRef || !this.$refs.bookContentRef.$el) {
         setTimeout(() => {
@@ -1563,9 +1664,9 @@ export default {
         return;
       }
       if (this.isSlideRead) {
+        this.refreshSlideMetrics();
         this.totalPages = Math.ceil(
-          this.$refs.bookContentRef.$el.scrollWidth /
-            (this.windowSize.width - 16)
+          this.$refs.bookContentRef.$el.scrollWidth / this.getSlidePageWidth()
         );
       } else {
         this.totalPages = Math.ceil(
@@ -1590,14 +1691,12 @@ export default {
         if (this.currentPage < this.totalPages) {
           if (typeof moveX === "undefined") {
             this.transformX =
-              -(this.windowSize.width - 16) * (this.currentPage - 1);
+              -this.getSlidePageWidth() * (this.currentPage - 1);
           }
           this.currentPage += 1;
           this.transforming = true;
           this.transform(
-            typeof moveX === "undefined"
-              ? -(this.windowSize.width - 16)
-              : moveX,
+            typeof moveX === "undefined" ? -this.getSlidePageWidth() : moveX,
             this.animateMSTime
           );
         } else {
@@ -1635,12 +1734,12 @@ export default {
         if (this.currentPage > 1) {
           if (typeof moveX === "undefined") {
             this.transformX =
-              -(this.windowSize.width - 16) * (this.currentPage - 1);
+              -this.getSlidePageWidth() * (this.currentPage - 1);
           }
           this.currentPage -= 1;
           this.transforming = true;
           this.transform(
-            typeof moveX === "undefined" ? this.windowSize.width - 16 : moveX,
+            typeof moveX === "undefined" ? this.getSlidePageWidth() : moveX,
             this.animateMSTime
           );
         } else {
@@ -1673,8 +1772,7 @@ export default {
       this.currentPage = Math.min(page, this.totalPages);
       if (this.isSlideRead) {
         const moveX =
-          -(this.windowSize.width - 16) * (this.currentPage - 1) -
-          this.transformX;
+          -this.getSlidePageWidth() * (this.currentPage - 1) - this.transformX;
         this.transform(
           moveX,
           typeof duration === "undefined" ? this.animateMSTime : duration
@@ -1808,10 +1906,10 @@ export default {
         this.transformX += this.lastMoveX;
         if (this.lastMoveX > 0) {
           // 上一页
-          this.prevPage(this.windowSize.width - 16 - this.lastMoveX);
+          this.prevPage(this.getSlidePageWidth() - this.lastMoveX);
         } else {
           // 下一页
-          this.nextPage(-(this.windowSize.width - 16) - this.lastMoveX);
+          this.nextPage(-this.getSlidePageWidth() - this.lastMoveX);
         }
       } else if (Math.abs(this.lastMoveY) <= 3 && this.lastTouch) {
         this.eventHandler(this.lastTouch);
@@ -2408,9 +2506,9 @@ export default {
         // 跳转位置
         this.$nextTick(() => {
           const pos = paragraph.getBoundingClientRect();
-          if (pos.left > this.windowSize.width - 16) {
+          if (pos.left > this.getSlidePageWidth()) {
             this.showPage(
-              Math.round(pos.left / (this.windowSize.width - 16)) + 1,
+              Math.round(pos.left / this.getSlidePageWidth()) + 1,
               0
             );
           }
@@ -3684,7 +3782,12 @@ export default {
 
   .chapter {
     width: 100vw !important;
+    // 强制固定手机模式阅读区左右间距（规避自定义目录规则触发的样式异常）
     padding: 0 16px;
+    padding-left: calc(16px + constant(safe-area-inset-left)) !important;
+    padding-left: calc(16px + env(safe-area-inset-left)) !important;
+    padding-right: calc(16px + constant(safe-area-inset-right)) !important;
+    padding-right: calc(16px + env(safe-area-inset-right)) !important;
     box-sizing: border-box;
     border: none;
     text-align: justify;
@@ -3717,6 +3820,8 @@ export default {
 
   .chapter.cartoon {
     padding: 0;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
 
     .content-inner {
       padding-top: 1px;
@@ -3725,6 +3830,8 @@ export default {
 
   .chapter.slide-reader {
     padding: 0;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
     height: 100%;
 
     .bottom-bar {
@@ -3753,6 +3860,10 @@ export default {
 
     .content-inner {
       margin: 0 16px;
+      margin-left: var(--slide-padding-left, calc(16px + constant(safe-area-inset-left))) !important;
+      margin-left: var(--slide-padding-left, calc(16px + env(safe-area-inset-left))) !important;
+      margin-right: var(--slide-padding-right, calc(16px + constant(safe-area-inset-right))) !important;
+      margin-right: var(--slide-padding-right, calc(16px + env(safe-area-inset-right))) !important;
       overflow: hidden;
       text-align: justify;
       padding: 0;
@@ -3761,10 +3872,10 @@ export default {
 
     .book-content {
       height: 100%;
-      -webkit-columns: calc(100vw - 32px) 1;
-      -webkit-column-gap: 32px;
-      columns: calc(100vw - 16px) 1;
-      column-gap: 16px;
+      -webkit-columns: var(--slide-content-width, calc(100vw - 32px)) 1;
+      -webkit-column-gap: var(--slide-column-gap, 32px);
+      columns: var(--slide-content-width, calc(100vw - 32px)) 1;
+      column-gap: var(--slide-column-gap, 32px);
     }
   }
 }

@@ -1,7 +1,11 @@
 package io.legado.app.model.localBook
 
+import com.htmake.reader.utils.storageFinalPath
+import com.htmake.reader.utils.workDirInit
+import com.htmake.reader.utils.workDirPath
 import io.legado.app.data.entities.Book
 import io.legado.app.exception.TocEmptyException
+import io.legado.app.help.DefaultData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -26,8 +30,8 @@ class TextFileTest {
     fun customRuleDoesNotTreatColonSubtitleAsVolume() {
         assertFalse(
             TextFile.shouldTreatAsVolume(
-                "番外②：新年快乐",
-                "番外②：新年快乐\n\n",
+                "番外Ⅲ：新年快乐",
+                "番外Ⅲ：新年快乐\n\n",
                 true
             )
         )
@@ -59,7 +63,10 @@ class TextFileTest {
     fun customRuleParsingDoesNotMarkColonSubtitleChaptersAsVolume() {
         val chapters = parseSample("(?m)^.*: .*$")
 
-        assertEquals(listOf("前言", "角色A: 欢迎来到会场", "角色B: 大家新年快乐", "角色C: 烟花升空", "角色D: 新年的钟声已经响了"), chapters.map { it.title })
+        assertEquals(
+            listOf("前言", "角色A: 欢迎来到会场", "角色B: 大家新年快乐", "角色C: 烟花升空", "角色D: 新年的钟声已经响了"),
+            chapters.map { it.title }
+        )
         assertEquals(listOf(false, false, false, false, false), chapters.map { it.isVolume })
     }
 
@@ -67,8 +74,36 @@ class TextFileTest {
     fun customRuleParsingStillMarksPureVolumeTitleAsVolume() {
         val chapters = parseSample("(?m)^(?:第一卷|角色[A-D]: .*)$")
 
-        assertEquals(listOf("第一卷", "角色A: 欢迎来到会场", "角色B: 大家新年快乐", "角色C: 烟花升空", "角色D: 新年的钟声已经响了"), chapters.map { it.title })
+        assertEquals(
+            listOf("第一卷", "角色A: 欢迎来到会场", "角色B: 大家新年快乐", "角色C: 烟花升空", "角色D: 新年的钟声已经响了"),
+            chapters.map { it.title }
+        )
         assertEquals(listOf(true, false, false, false, false), chapters.map { it.isVolume })
+    }
+
+    @Test
+    fun externalCustomRuleStillUsesStrictVolumeHeuristics() {
+        withTempWorkDir { tempDir ->
+            val externalFile = tempDir.resolve("storage").resolve("defaultData").resolve(DefaultData.txtTocRuleFileName)
+            externalFile.parent.toFile().mkdirs()
+            Files.write(
+                externalFile,
+                """
+                [
+                  {
+                    "id": 659,
+                    "name": "issue-659-custom",
+                    "rule": "(?m)^.*: .*$",
+                    "serialNumber": 1,
+                    "enable": true
+                  }
+                ]
+                """.trimIndent().toByteArray(StandardCharsets.UTF_8)
+            )
+
+            val chapters = parseSample("(?m)^.*: .*$")
+            assertEquals(listOf(false, false, false, false, false), chapters.map { it.isVolume })
+        }
     }
 
     @Test(expected = TocEmptyException::class)
@@ -100,5 +135,23 @@ class TextFileTest {
         val stream = javaClass.getResourceAsStream("/samples/issue-659-minimal.txt")
             ?: error("missing issue-659 sample resource")
         return stream.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
+    }
+
+    private fun withTempWorkDir(block: (java.nio.file.Path) -> Unit) {
+        val previousWorkDirPath = workDirPath
+        val previousWorkDirInit = workDirInit
+        val previousStorageFinalPath = storageFinalPath
+        val tempDir = Files.createTempDirectory("reader-textfile-test")
+        try {
+            workDirPath = tempDir.toString()
+            workDirInit = true
+            storageFinalPath = ""
+            block(tempDir)
+        } finally {
+            storageFinalPath = previousStorageFinalPath
+            workDirPath = previousWorkDirPath
+            workDirInit = previousWorkDirInit
+            tempDir.toFile().deleteRecursively()
+        }
     }
 }
