@@ -883,14 +883,14 @@
     <el-dialog
       :title="'导入本地书籍' + importMultiBookTip"
       :visible.sync="showImportBookDialog"
-      :width="dialogSmallWidth"
-      :top="dialogTop"
+      :width="importBookDialogWidth"
+      :top="importBookDialogTop"
       @closed="importBookDialogClosed"
-      :fullscreen="collapseMenu"
+      custom-class="import-book-dialog"
       :class="isWebApp && !isNight ? 'status-bar-light-bg-dialog' : ''"
       v-if="$store.getters.isNormalPage"
     >
-      <div class="source-container table-container">
+      <div class="source-container table-container import-book-container">
         <div class="check-form">
           <div class="book-cover">
             <el-image
@@ -967,10 +967,7 @@
         <div class="chapter-title">
           章节列表({{ importBookChapters.length }})
         </div>
-        <div
-          class="chapter-list"
-          :style="{ maxHeight: dialogContentHeight - 40 - 35 + 'px' }"
-        >
+        <div class="chapter-list" :style="importBookChapterListStyle">
           <p v-for="(chapter, index) in importBookChapters" :key="index">
             {{ index + 1 }}. {{ chapter.title }}
           </p>
@@ -2772,6 +2769,20 @@ export default {
       "dialogContentHeight",
       "popupWidth"
     ]),
+    importBookDialogWidth() {
+      return this.collapseMenu ? "92%" : this.dialogSmallWidth;
+    },
+    importBookDialogTop() {
+      return this.collapseMenu ? "4vh" : this.dialogTop;
+    },
+    importBookChapterListStyle() {
+      if (this.collapseMenu) {
+        return {};
+      }
+      return {
+        maxHeight: this.dialogContentHeight - 40 - 35 + "px"
+      };
+    },
     config() {
       return this.$store.getters.config;
     },
@@ -3408,6 +3419,23 @@ export default {
     padding: 0;
   }
 
+  &.import-book-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+
+    .check-form {
+      align-items: flex-start;
+      flex: 0 0 auto;
+    }
+
+    .chapter-list {
+      flex: 1 1 auto;
+      min-height: 180px;
+    }
+  }
+
   .check-form {
     display: flex;
     flex-direction: row;
@@ -3454,6 +3482,11 @@ export default {
         display: inline-block;
         min-width: 56px;
         text-align-last: justify;
+      }
+      .el-select {
+        width: auto;
+        min-width: 100px;
+        margin-right: 10px;
       }
       .el-input {
         width: auto;
@@ -3603,12 +3636,71 @@ export default {
       }
     }
   }
+  .source-container.import-book-container {
+    margin: 0;
+
+    .check-form {
+      overflow-x: visible;
+
+      .book-cover {
+        width: 68px;
+        height: 92px;
+
+        .cover {
+          width: 68px;
+          height: 92px;
+        }
+      }
+
+      .book-info {
+        flex: 1;
+        min-width: 0;
+        margin-left: 14px;
+
+        > div {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          margin-bottom: 8px;
+        }
+
+        > div:last-child {
+          margin-bottom: 0;
+        }
+
+        span {
+          min-width: 48px;
+        }
+
+        .el-input,
+        .el-select {
+          width: calc(100% - 58px);
+          min-width: 0;
+          margin-right: 0;
+        }
+
+        .el-textarea {
+          width: 100%;
+        }
+
+        .toc-refresh-btn {
+          margin-left: 48px;
+          padding-left: 0;
+        }
+      }
+    }
+
+    .chapter-list {
+      min-height: 220px;
+    }
+  }
+
   .source-list-container  {
     max-height: calc(var(--vh, 1vh) * 100 - 54px - 40px - 66px);
   }
 }
 @media screen and (max-width: 480px) {
-  .source-container.table-container {
+  .source-container.table-container:not(.import-book-container) {
     margin: -15px -5px;
   }
 }
@@ -3664,6 +3756,32 @@ export default {
     rgba(0, 0, 0, 0.2) 0,
     transparent 36px
   ) !important;
+}
+.import-book-dialog {
+  display: flex;
+  flex-direction: column;
+  max-width: calc(100vw - 24px);
+  max-height: calc(var(--vh, 1vh) * 88);
+  overflow: hidden;
+}
+.import-book-dialog .el-dialog__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.import-book-dialog .el-dialog__footer {
+  flex: 0 0 auto;
+}
+@media screen and (max-width: 750px) {
+  .import-book-dialog {
+    width: calc(100vw - 24px) !important;
+    max-height: calc(var(--vh, 1vh) * 92);
+  }
+  .import-book-dialog .el-dialog__footer {
+    padding: 10px 16px calc(12px + constant(safe-area-inset-bottom)) 16px;
+    padding: 10px 16px calc(12px + env(safe-area-inset-bottom)) 16px;
+  }
 }
 @media (hover: hover) {
   .book:hover {
