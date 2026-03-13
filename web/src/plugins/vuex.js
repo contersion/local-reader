@@ -28,7 +28,7 @@ export default new Vuex.Store({
     config: { ...settings.config },
     miniInterface: false,
     windowSize: {
-      width: window.innerWidth,
+      width: document.documentElement.clientWidth || window.innerWidth,
       height: window.innerHeight
     },
     touchable: "ontouchstart" in document,

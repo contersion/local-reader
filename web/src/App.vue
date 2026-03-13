@@ -270,7 +270,7 @@ export default {
       );
       this.$store.commit("setMiniInterface", isMiniInterface());
       this.$store.commit("setWindowSize", {
-        width: window.innerWidth,
+        width: document.documentElement.clientWidth || window.innerWidth,
         height: window.innerHeight
       });
       this.$store.commit("setTouchable", "ontouchstart" in document);
@@ -302,10 +302,10 @@ export default {
     try {
       const docStyle = getComputedStyle(document.documentElement);
       this.$store.commit("setSafeArea", {
-        top: docStyle.getPropertyValue("--sat") | 0,
-        bottom: docStyle.getPropertyValue("--sab") | 0,
-        left: docStyle.getPropertyValue("--sal") | 0,
-        right: docStyle.getPropertyValue("--sar") | 0
+        top: parseInt(docStyle.getPropertyValue("--sat"), 10) || 0,
+        bottom: parseInt(docStyle.getPropertyValue("--sab"), 10) || 0,
+        left: parseInt(docStyle.getPropertyValue("--sal"), 10) || 0,
+        right: parseInt(docStyle.getPropertyValue("--sar"), 10) || 0
       });
     } catch (error) {
       //

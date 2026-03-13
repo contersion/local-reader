@@ -895,7 +895,7 @@ export default {
           : -(this.readWidthConfig / 2) + "px",
         zIndex: 200,
         display: this.speechAvalable && this.showReadBar ? "block" : "none",
-        width: this.$store.state.miniInterface ? "100vw" : "500px"
+        width: this.$store.state.miniInterface ? "100%" : "500px"
       };
     },
     readWidth() {
@@ -1631,7 +1631,13 @@ export default {
         return;
       }
       let pageWidth = fallbackPageWidth;
-      if (this.$refs.content) {
+      const contentPage =
+        this.$refs.content && this.$refs.content.querySelector(".content");
+      if (contentPage && contentPage.clientWidth) {
+        pageWidth = contentPage.clientWidth;
+      } else if (this.$refs.content && this.$refs.content.clientWidth) {
+        pageWidth = this.$refs.content.clientWidth;
+      } else if (this.$refs.content) {
         const pageRect = this.$refs.content.getBoundingClientRect();
         if (pageRect && pageRect.width) {
           pageWidth = Math.round(pageRect.width);
@@ -1642,7 +1648,9 @@ export default {
         this.$refs.bookContentRef &&
         this.$refs.bookContentRef.$el &&
         this.$refs.bookContentRef.$el.parentElement;
-      if (contentInner) {
+      if (contentInner && contentInner.clientWidth) {
+        contentWidth = contentInner.clientWidth;
+      } else if (contentInner) {
         const contentRect = contentInner.getBoundingClientRect();
         if (contentRect && contentRect.width) {
           contentWidth = Math.round(contentRect.width);
@@ -3715,7 +3723,8 @@ export default {
 
   .tool-bar {
     left: 0;
-    width: 100vw;
+    right: 0;
+    width: auto;
     margin-left: 0 !important;
 
     .tools {
@@ -3728,8 +3737,9 @@ export default {
   }
 
   .read-bar {
+    left: 0;
     right: 0;
-    width: 100vw;
+    width: auto;
     margin-right: 0 !important;
 
     .cache-content-zone {
@@ -3781,7 +3791,7 @@ export default {
   }
 
   .chapter {
-    width: 100vw !important;
+    width: 100% !important;
     // 强制固定手机模式阅读区左右间距（规避自定义目录规则触发的样式异常）
     padding: 0 16px;
     padding-left: calc(16px + constant(safe-area-inset-left)) !important;
@@ -3797,7 +3807,8 @@ export default {
       position: fixed;
       top: 0;
       left: 0;
-      width: 100vw;
+      right: 0;
+      width: auto;
       z-index: 50;
       background: inherit;
       height: 30px;
@@ -3806,6 +3817,10 @@ export default {
       padding: 6px 16px;
       padding-top: calc(6px + constant(safe-area-inset-top));
       padding-top: calc(6px + env(safe-area-inset-top));
+      padding-left: var(--slide-padding-left, calc(16px + constant(safe-area-inset-left)));
+      padding-left: var(--slide-padding-left, calc(16px + env(safe-area-inset-left)));
+      padding-right: var(--slide-padding-right, calc(16px + constant(safe-area-inset-right)));
+      padding-right: var(--slide-padding-right, calc(16px + env(safe-area-inset-right)));
       font-size: 12px;
     }
 
@@ -3838,8 +3853,15 @@ export default {
       height: 24px;
       position: absolute;
       bottom: 0;
+      left: 0;
+      right: 0;
       padding: 0 16px;
+      padding-left: var(--slide-padding-left, calc(16px + constant(safe-area-inset-left)));
+      padding-left: var(--slide-padding-left, calc(16px + env(safe-area-inset-left)));
+      padding-right: var(--slide-padding-right, calc(16px + constant(safe-area-inset-right)));
+      padding-right: var(--slide-padding-right, calc(16px + env(safe-area-inset-right)));
       padding-bottom: 6px;
+      box-sizing: border-box;
       display: flex;
       justify-content: space-between;
       font-size: 12px;
@@ -3856,10 +3878,12 @@ export default {
       top: calc(30px + constant(safe-area-inset-top));
       top: calc(30px + env(safe-area-inset-top));
       bottom: 24px;
+      left: 0;
+      right: 0;
     }
 
     .content-inner {
-      margin: 0 16px;
+      width: auto;
       margin-left: var(--slide-padding-left, calc(16px + constant(safe-area-inset-left))) !important;
       margin-left: var(--slide-padding-left, calc(16px + env(safe-area-inset-left))) !important;
       margin-right: var(--slide-padding-right, calc(16px + constant(safe-area-inset-right))) !important;
@@ -3868,10 +3892,13 @@ export default {
       text-align: justify;
       padding: 0;
       height: 100%;
+      box-sizing: border-box;
     }
 
     .book-content {
+      width: 100%;
       height: 100%;
+      box-sizing: border-box;
       -webkit-columns: var(--slide-content-width, calc(100vw - 32px)) 1;
       -webkit-column-gap: var(--slide-column-gap, 32px);
       columns: var(--slide-content-width, calc(100vw - 32px)) 1;

@@ -24,7 +24,22 @@ export function registerServiceWorker() {
             );
             const newVersion = process.env.VUE_APP_BUILD_VERSION;
             if (currentVersion !== newVersion) {
-              registration.active.postMessage({ type: "SKIP_WAITING" });
+              const workers = [
+                registration.active,
+                registration.waiting,
+                registration.installing
+              ].filter((worker, index, list) => {
+                return worker && list.indexOf(worker) === index;
+              });
+              workers.forEach(worker => {
+                try {
+                  worker.postMessage({ type: "CLEAR_RUNTIME_CACHES" });
+                  worker.postMessage({ type: "SKIP_WAITING" });
+                } catch (error) {
+                  // ignore worker messaging failures during registration races
+                }
+              });
+              registration.update && registration.update().catch(() => {});
               window.localStorage.setItem(
                 "READER_APP_BUILD_VERSION",
                 newVersion

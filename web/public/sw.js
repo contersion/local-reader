@@ -1,6 +1,33 @@
+const RUNTIME_CACHE_NAMES = ["home", "SITE_CAHCE", "OPAQUE_CAHCE", "bookCover"];
+
+async function clearRuntimeCaches() {
+  const cacheNames = await self.caches.keys();
+  return Promise.all(
+    cacheNames
+      .filter(cacheName => {
+        return (
+          RUNTIME_CACHE_NAMES.indexOf(cacheName) >= 0 ||
+          cacheName.indexOf("reader-") === 0
+        );
+      })
+      .map(cacheName => self.caches.delete(cacheName))
+  );
+}
+
+self.addEventListener("activate", event => {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener("message", event => {
-  if (event.data && event.data.type === "CLEAR_HOME_CACHE") {
-    self.caches.delete("home");
+  if (!event.data || !event.data.type) {
+    return;
+  }
+  if (event.data.type === "CLEAR_HOME_CACHE") {
+    event.waitUntil(self.caches.delete("home"));
+    return;
+  }
+  if (event.data.type === "CLEAR_RUNTIME_CACHES") {
+    event.waitUntil(clearRuntimeCaches());
   }
 });
 

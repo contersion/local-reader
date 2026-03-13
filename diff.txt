@@ -1,0 +1,999 @@
+﻿diff --git a/Dockerfile.source b/Dockerfile.source
+index 84cff49..76f698f 100644
+--- a/Dockerfile.source
++++ b/Dockerfile.source
+@@ -1,14 +1,23 @@
+ FROM node:16-alpine AS build-web
+ ADD . /app
+ WORKDIR /app/web
+-# Build web
+-RUN yarn --ignore-engines && yarn build
++# Reuse a local dist when available, otherwise build it in-container.
++RUN \
++    if [ -f dist/index.html ]; then \
++        mkdir -p /web-dist; \
++        cp -a dist/. /web-dist/; \
++    else \
++        yarn --ignore-engines; \
++        yarn build; \
++        mkdir -p /web-dist; \
++        cp -a dist/. /web-dist/; \
++    fi
+ 
+ # Build jar
+ FROM gradle:6.1.1-jdk8 AS build-env
+ ADD --chown=gradle:gradle . /app
+ WORKDIR /app
+-COPY --from=build-web /app/web/dist /app/src/main/resources/web
++COPY --from=build-web /web-dist /app/src/main/resources/web
+ RUN \
+     rm src/main/java/com/htmake/reader/ReaderUIApplication.kt; \
+     gradle -b cli.gradle assemble --info; \
+diff --git a/README.md b/README.md
+index 4565c02..4888706 100644
+--- a/README.md
++++ b/README.md
+@@ -60,6 +60,24 @@
+ 
+ 璇﹁[鏂囨。](https://github.com/hectorqin/reader/blob/master/doc.md)
+ 
++## 鏈湴娴嬭瘯
++
++鏈粨搴撳綋鍓嶇殑 Gradle 娴嬭瘯閾捐矾寤鸿浣跨敤 `JDK 11`銆備负閬垮厤鍜屾湰鏈哄叾瀹?Java 鐗堟湰鍐茬獊锛屽彲浠ョ洿鎺ヤ娇鐢ㄤ粨搴撳唴鐨?PowerShell 鑴氭湰锛屽畠浼氳嚜鍔ㄦ煡鎵?`JDK 11`銆佽缃复鏃?`JAVA_HOME`銆佸仠姝㈡棫鐨?Gradle daemon锛屽苟杞彂鍚庣画鍙傛暟銆?+
++Windows 涓嬭繍琛屽叏閮ㄦ祴璇曪細
++
++```powershell
++powershell -ExecutionPolicy Bypass -File .\scripts\gradle-jdk11.ps1 test
++```
++
++鍙繍琛屾湰娆″乏鍙宠竟璺濋棶棰樺搴旂殑鍥炲綊娴嬭瘯锛?+
++```powershell
++powershell -ExecutionPolicy Bypass -File .\scripts\gradle-jdk11.ps1 test --tests io.legado.app.model.localBook.TextFileTest
++```
++
++濡傛灉鑴氭湰娌℃湁鎵惧埌 `JDK 11`锛屽彲浠ュ厛璁剧疆鐢ㄦ埛鐜鍙橀噺 `JAVA11_HOME`锛屾垨鑰呮妸 JDK 瑙ｅ帇鍒?`%USERPROFILE%\.jdks` 鐩綍涓嬨€傛祴璇曟姤鍛婇粯璁よ緭鍑哄埌 `build/test-results/test/`銆?+
+ ## 闂
+ 
+ - 閮ㄥ垎浣跨敤浜?`Javascript` 鐨勪功婧愬彲鑳戒細鎶ラ敊锛屽璋冪敤鍘熺敓java绛夐珮绾avascript鍔熻兘
+diff --git a/UPDATE.md b/UPDATE.md
+new file mode 100644
+index 0000000..374f0c8
+--- /dev/null
++++ b/UPDATE.md
+@@ -0,0 +1,199 @@
++# UPDATE
++
++## 2026-03-10 ~ 2026-03-11 浼氳瘽璁板綍
++
++### 淇敼鏃ユ湡
++- 2026-03-10 ~ 2026-03-11
++
++### 淇敼鍐呭
++- 鍚庣鐩綍瑙勫垯鍒ゆ柇
++  - 鍦?`src/main/java/io/legado/app/help/DefaultData.kt` 鏂板 `isBuiltinTxtTocRule`銆?+  - 鍦?`src/main/java/io/legado/app/model/localBook/TextFile.kt` 涓皢 `strictCustomRule` 鏀逛负鍙鐪熸鐨勫唴缃?TXT 鐩綍瑙勫垯鏀惧鍒ゆ柇锛屼笉鍐嶆妸澶栭儴/鑷畾涔夎鍒欏綋鎴愬唴缃鍒欏鐞嗐€?+- 鍥炲綊娴嬭瘯
++  - 鍦?`src/test/kotlin/io/legado/app/model/localBook/TextFileTest.kt` 琛ュ厖 issue #659 鐩稿叧鍥炲綊娴嬭瘯銆?+  - 鏂板鈥滃閮ㄨ嚜瀹氫箟鐩綍瑙勫垯浠嶇劧浣跨敤涓ユ牸鍗峰悕鍒ゆ柇鈥濈殑娴嬭瘯锛岄槻姝㈠悗缁啀娆″洖閫€銆?+- 鏈湴娴嬭瘯閾捐矾
++  - 鍦ㄦ湰鏈哄畨瑁?`JDK 11` 鍒?`C:\Users\renas\.jdks\jdk-11.0.30+7`銆?+  - 鎸佷箙鍖栫敤鎴风幆澧冨彉閲?`JAVA11_HOME`銆?+  - 鏂板 `scripts/gradle-jdk11.ps1`锛岀敤浜庡浐瀹氱敤 JDK 11 璺?Gradle锛屽苟閬垮厤鏃?daemon 涓茬敤閿欒 Java 鐗堟湰銆?+  - 鍦?`README.md` 涓ˉ鍏呮湰鍦版祴璇曡鏄庛€?+- 鍓嶇闃呰椤典慨姝?+  - 鍦?`web/src/views/Reader.vue` 涓繚鐣欏苟鏁寸悊鎵嬫満妯″紡涓嬬殑宸﹀彸瀹夊叏鍖洪棿璺濆鐞嗐€?+  - 鏂板 `getSlidePageWidth()`锛屽皢鎵嬫満宸﹀彸婊戝姩鍒嗛〉浠庣‖缂栫爜鐨?`windowSize.width - 16` 鏀逛负鎸夌湡瀹為槄璇婚〉瀹借绠椼€?+  - 鍚屾淇鍒嗛〉鎬绘暟銆佺炕椤靛姩鐢汇€佽Е鎽告粦鍔ㄦ敹灏俱€佹钀借烦杞畾浣嶇瓑閫昏緫锛岄伩鍏嶉〉鏁拌秺寰€鍚庡亸绉昏秺澶с€?+- 鏋勫缓涓庤繍琛岄獙璇?+  - 閲嶆柊鏋勫缓骞跺惎鍔ㄦ簮鐮佺増 Docker 瀹瑰櫒銆?+  - 楠岃瘉 `http://localhost:18080/` 杩斿洖 `HTTP 200`銆?+
++### 鏁翠綋鎬濊矾
++- 鍏堟寜 issue #659 鐨勬弿杩版媶鎴愪袱鏉￠摼璺帓鏌ワ細
++  - 鍚庣锛氳嚜瀹氫箟 TXT 鐩綍瑙勫垯鏄惁鏀瑰彉浜嗙珷鑺傜粨鏋勬暟鎹€?+  - 鍓嶇锛氭墜鏈烘ā寮忎笅闃呰鍖哄搴︺€佸垎椤典綅绉汇€侀《閮ㄥ崰浣嶆槸鍚︿娇鐢ㄤ簡閿欒鐨勫浐瀹氬€笺€?+- 瀵瑰悗绔厛琛ュ洖褰掓祴璇曪紝鍐嶄慨閫昏緫锛岄伩鍏嶇户缁潬鑲夌溂鐚滄祴銆?+- 瀵瑰墠绔笉鍐嶅彧琛?CSS锛岃€屾槸杩藉埌鐪熸鎺у埗鍒嗛〉鍜屼綅绉荤殑 JS 閫昏緫锛岀粺涓€鏀逛负浣跨敤鐪熷疄 DOM 瀹藉害銆?+- 鍚屾椂琛ラ綈鏈湴娴嬭瘯鐜锛岀‘淇濆悗缁兘绋冲畾澶嶆祴锛岃€屼笉鏄瘡娆￠兘琚?Java/Gradle 鐗堟湰闂闃诲銆?+
++### 涓哄暐瑕佽繖鏍蜂慨鏀?+- 鑷畾涔夌洰褰曡鍒欎笉搴旇琚綋鎴愬唴缃鍒欏鐞嗐€?+  - 鍚﹀垯绔犺妭 `isVolume` 鍒ゅ畾浼氬彂鐢熷亸宸紝杩涜€屽奖鍝嶉槄璇婚〉鐨勬覆鏌撳垎鏀拰鐩綍琛屼负銆?+- 鎵嬫満宸﹀彸婊戝姩妯″紡涓嶅簲璇ヤ緷璧栧浐瀹氱殑 `windowSize.width - 16`銆?+  - 褰撳墠椤甸潰鐪熷疄瀹藉害鍚屾椂鍙?`100vw`銆乸adding銆佸畨鍏ㄥ尯銆侀《閮?搴曢儴缁撴瀯褰卞搷锛屽浐瀹氬€间細瀵艰嚧绗?2 椤典互鍚庣疮璁″亸绉汇€?+  - 杩欎釜鍋忕Щ鍦ㄨ瑙変笂浼氳〃鐜版垚鈥滃乏鍙宠竟璺濆紓甯糕€濄€佲€滀笂涓€椤靛唴瀹规尋杩涙潵鈥濇垨鑰呪€滄鏂囧尯鍩熻鍘嬬缉鈥濄€?+- 鏈湴娴嬭瘯蹇呴』鍥哄畾鍒?JDK 11銆?+  - 璇ラ」鐩湪瀹夸富鏈轰笂鍚屾椂鍙?Gradle 6.1.1銆丟roovy銆丣avaFX 鎻掍欢褰卞搷锛孞DK 8 / 21 閮戒細瀵艰嚧娴嬭瘯閾捐矾涓嶇ǔ瀹氭垨鐩存帴澶辫触銆?+
++### 缁撴灉涓庡綋鍓嶇姸鎬?+- 宸插畬鎴?+  - 鍚庣鑷畾涔夌洰褰曡鍒欏垽鏂慨姝ｃ€?+  - issue #659 鐩稿叧鍥炲綊娴嬭瘯琛ュ厖瀹屾垚銆?+  - 鏈湴 JDK 11 娴嬭瘯閾捐矾鎵撻€氥€?+  - `TextFileTest` 鍜屽畬鏁?`test` 浠诲姟鍧囧凡鍦ㄦ湰鏈烘垚鍔熸墽琛屻€?+  - Docker 鏈嶅姟宸查噸鏂版瀯寤哄苟鍚姩銆?+- 浠嶉渶缁х画纭
++  - 杩欐浼氳瘽鏈€鍚庤拷鍔犵殑鏄墠绔墜鏈哄垎椤靛搴︿慨姝ｃ€?+  - 璇ヤ慨姝ｅ凡缁忔瀯寤鸿繘瀹瑰櫒锛屼絾鏄惁瀹屽叏瑕嗙洊鐢ㄦ埛鎴浘涓殑鏈€缁堣〃鐜帮紝浠嶉渶瑕佸湪瀹為檯娴忚鍣ㄩ噷缁х画澶嶆祴銆?+  - 鐢变簬椤圭洰鍚敤浜?PWA / service worker锛屽墠绔娴嬪墠闇€瑕佹敞鎰忔祻瑙堝櫒缂撳瓨鍙兘瀵艰嚧鏃ц剼鏈户缁敓鏁堛€?+
++### 鍚庣画鏌ョ湅寤鸿
++- 浼樺厛鏌ョ湅鏈娑夊強鐨勬牳蹇冩枃浠讹細
++  - `src/main/java/io/legado/app/help/DefaultData.kt`
++  - `src/main/java/io/legado/app/model/localBook/TextFile.kt`
++  - `src/test/kotlin/io/legado/app/model/localBook/TextFileTest.kt`
++  - `web/src/views/Reader.vue`
++  - `scripts/gradle-jdk11.ps1`
++  - `README.md`
++- 鏈湴澶嶆祴鍛戒护锛?+
++```powershell
++powershell -ExecutionPolicy Bypass -File .\scripts\gradle-jdk11.ps1 test
++```
++
++- 瀹氬悜楠岃瘉 issue #659 鐩稿叧娴嬭瘯锛?+
++```powershell
++powershell -ExecutionPolicy Bypass -File .\scripts\gradle-jdk11.ps1 test --tests io.legado.app.model.localBook.TextFileTest
++```
++## 2026-03-11 浼氳瘽杩藉姞璁板綍
++
++### 淇敼鏃ユ湡
++- 2026-03-11
++
++### 鏈疆鏂板闂瀹氫綅
++- 闃呰椤垫暣椤靛埛鏂板悗锛屽墠绔湪 `readingBook.bookUrl` 杩樻病瀹屽叏鎭㈠鏃讹紝灏卞厛鍙戝嚭浜嗗彧甯?`{"refresh":0}` 鐨?`/reader3/getChapterList` 璇锋眰銆?+- 鍚庣 `src/main/java/com/htmake/reader/api/controller/BookController.kt` 閲屽 `context.bodyAsJson` 鐨勮鍙栦笉澶熷畨鍏紝杩欑鍗婃埅璇锋眰浼氱洿鎺ヨЕ鍙?`java.lang.NullPointerException`銆?+- 鍓嶇 `web/src/views/Reader.vue` 鍦ㄥ垵濮嬪寲澶辫触鏃跺張鍋滅暀鍦?`show = false`锛屾墍浠ラ〉闈㈣〃鐜颁负鈥滄彁绀轰竴涓嬪紓甯革紝鐒跺悗姝ｆ枃鍏ㄧ┖鐧斤紝蹇呴』閫€鍥炰功鏋跺啀鐐逛竴娆♀€濄€?+- 婧愮爜鐗?Docker 閲嶆柊閮ㄧ讲鏃讹紝瀹瑰櫒鍐?`yarn` 鎷夊寘涓嶇ǔ瀹氾紝鍥犳杩樿ˉ浜嗕竴娆℃簮鐮侀暅鍍忔瀯寤洪摼璺€?+
++### 鏈疆淇敼鎬濊矾
++- 鍏堜粠鏃ュ織鍙嶆帹锛岃€屼笉鏄户缁彧鐪嬪墠绔幇璞°€?+  - 纭鍒锋柊鏃跺疄闄呭懡涓殑鏄?`/reader3/getChapterList`锛屽苟涓旇姹備綋纭疄鍙湁 `refresh`锛屼笉鏄畬鏁寸殑闃呰鍙傛暟銆?+- 鍚庣鍏堝厹搴曘€?+  - 鍏堟妸闃呰閾捐矾涓婃渶鍏抽敭鐨勫嚑涓?POST 鍙栧弬鏀规垚绌哄畨鍏紝閬垮厤浠讳綍鈥滄仮澶嶈繃绋嬩腑鐨勫崐鎴姹傗€濈洿鎺ユ妸鎺ュ彛鎵撴垚 NPE銆?+- 鍓嶇鍐嶈ˉ鍒濆鍖栨椂鏈烘帶鍒躲€?+  - 鍦?`readingBook.bookUrl` 灏氭湭鎭㈠瀹屾垚鏃跺厛鎸傝捣闃呰鍒濆鍖栵紝绛夌姸鎬佹仮澶嶅悗鍐嶇户缁姞杞界洰褰曞拰姝ｆ枃銆?+- 鏈€鍚庡啀琛ュけ璐ュ厹搴曘€?+  - 鍗充娇鐩綍璇锋眰澶辫触锛屼篃瑕佹妸閿欒鍐呭鏄剧ず鍑烘潵锛屼笉鑳界户缁暀鍦ㄧ櫧灞忔€併€?+- Docker 閮ㄧ讲鍗曠嫭澶勭悊銆?+  - 婧愮爜鐗堟瀯寤轰紭鍏堝鐢ㄦ湰鍦?`web/dist`锛岄伩鍏嶅鍣ㄩ噷閲嶆柊 `yarn build` 鏃跺彈缃戠粶褰卞搷澶辫触銆?+
++### 鏈疆淇敼鏂囦欢
++- `src/main/java/com/htmake/reader/api/controller/BookController.kt`
++  - 瀵?`getChapterList`銆乣saveBookProgress`銆乣getBookContent` 鐨?POST 鍙栧弬鍔犱簡绌哄畨鍏ㄥ鐞嗐€?+- `web/src/views/Reader.vue`
++  - 澧炲姞 `pendingInit` 瀹堝崼锛屽欢鍚庨槄璇婚〉鍒濆鍖栨椂鏈恒€?+  - 琛ヤ簡鐩綍鍔犺浇澶辫触鏃剁殑鍓嶇鍏滃簳灞曠ず锛岄伩鍏嶅埛鏂板悗鐧藉睆銆?+  - 杩欎竴杞篃缁х画娌跨敤浜嗘粦鍔ㄥ垎椤靛搴︺€佸垪瀹姐€佸垪闂磋窛鐨勭粺涓€娴嬮噺閫昏緫銆?+- `Dockerfile.source`
++  - 璋冩暣婧愮爜闀滃儚鏋勫缓娴佺▼锛屼紭鍏堝鐢ㄦ湰鍦板凡鏋勫缓鐨?`web/dist`锛岀己澶辨椂鎵嶅洖閫€鍒板鍣ㄥ唴鏋勫缓銆?+
++### 鏈疆楠岃瘉
++- 鍓嶇 `npm.cmd run build` 宸查€氳繃銆?+- `TextFileTest` 浠嶇劧淇濇寔閫氳繃銆?+- Docker Desktop 婧愮爜鐗堝鍣ㄥ凡閲嶆柊鏋勫缓骞跺惎鍔紝`http://localhost:18080/` 杩斿洖 `200`銆?+- 瀹氬悜楠岃瘉浜嗏€滃彧甯?`refresh` 鐨?`/reader3/getChapterList` 璇锋眰鈥濄€?+  - 鐜板湪杩斿洖鐨勬槸涓氬姟閿欒 `璇疯緭鍏ヤ功绫嶉摼鎺锛屼笉鍐嶆姏 `NullPointerException`銆?+
++### 鍝簺杩樻病鏀瑰ソ
++- 宸﹀彸闂磋窛闂鐩墠纭杩樻病鏈変慨鏀瑰畬姣曘€?+  - 杩欐浼氳瘽閲岃櫧鐒跺凡缁忔妸婊戝姩闃呰鐨勯〉瀹姐€佹鏂囧垪瀹姐€佸垪闂磋窛缁熶竴鍒板悓涓€濂楁祴閲忛€昏緫涓婏紝浣嗕粠浣犵殑瀹為檯鍙嶉鐪嬶紝鎵嬫満闃呰椤靛乏鍙冲畨鍏ㄥ尯/姝ｆ枃瀹藉害鐨勬渶缁堣〃鐜颁粛鐒舵病鏈夊畬鍏ㄥ榻愩€?+  - 涔熷氨鏄锛岃繖閮ㄥ垎涓嶈兘璁颁负鈥滃凡褰诲簳淇鈥濓紝鍙兘璁颁负鈥滃凡缁х画鎺ㄨ繘锛屼絾浠嶉渶澶嶆祴鍜岀户缁慨鏀光€濄€?+- 鍥犳鏈疆璁板綍閲岋紝闃呰椤电浉鍏充慨鏀硅鍖哄垎鎴愪袱閮ㄥ垎锛?+  - 鈥滃埛鏂板悗绌虹櫧/NPE鈥濊繖涓€鏉″凡瀹氫綅骞惰ˉ涓婂厹搴曘€?+  - 鈥滃乏鍙抽棿璺濆紓甯糕€濊繖涓€鏉＄洰鍓嶄粛鏈敹鍙ｃ€?+## 2026-03-11 浼氳瘽杩藉姞璁板綍锛堜簩锛?+
++### 淇敼鏃ユ湡
++- 2026-03-11
++
++### 鏈疆鏂板闂瀹氫綅
++- 鎵嬫満涓婂乏鍙虫粦鍔ㄩ槄璇婚〉鐨勫乏鍙抽棿璺濆紓甯镐粛鐒跺瓨鍦紝鑰屼笖纭涓嶆槸鈥滀袱鎺掓寜閽竷灞€鈥濇湰韬氨鑳借В鍐崇殑闂銆?+- 涓婁竴杞复鏃舵妸宸﹀彸娴姩鎸夐挳鏀规垚浜嗗簳閮ㄤ袱鎺掑眳涓竷灞€锛屼絾浠庝綘鐨勫疄闄呭弽棣堢湅锛岃繖涓敼鍔ㄥ弽鑰屽共鎵颁簡闂鍒ゆ柇锛屽洜姝ら渶瑕佸厛鍥為€€銆?+- 缁х画鎺掓煡鍚庣‘璁わ紝鎵嬫満闃呰椤甸噷浠嶆湁澶氬 `100vw`銆乣window.innerWidth`銆佽嚜鍔ㄥ搴﹀拰鐪熷疄鍐呭瀹瑰櫒瀹藉害娣风敤銆?+- 杩欎簺鍊煎湪 PWA / 绉诲姩娴忚鍣ㄧ幆澧冧笅涓嶄竴瀹氬畬鍏ㄧ浉绛夛紝鎵€浠ヨ櫧鐒跺垎椤甸€昏緫宸茬粡涓嶅啀浣跨敤鏃х殑鍥哄畾鍊硷紝浣嗘鏂囧尯銆侀《閮ㄦ爮銆佸簳閮ㄦ爮鍜屾粦鍔ㄥ垎椤靛垪瀹戒粛鍙兘鍑虹幇宸﹀彸鐣欑櫧涓嶄竴鑷淬€?+
++### 鏈疆淇敼鎬濊矾
++- 鍏堝洖閫€涓存椂鎸夐挳甯冨眬銆?+  - 鎭㈠鎴愪笂涓増鏈殑宸﹀彸娴姩鏂瑰紡锛岄伩鍏嶆妸鈥滄寜閽伄鎸℃鏂団€濆拰鈥滄鏂囧乏鍙抽棿璺濆紓甯糕€濇贩鎴愬悓涓€涓棶棰樸€?+- 鍐嶆敹绱ф墜鏈洪槄璇婚〉鐨勫搴︽潵婧愩€?+  - 鎶婃墜鏈烘ā寮忎笅鍑犲浠嶄緷璧?`100vw` 鐨勫竷灞€鏀规垚宸﹀彸璐磋竟鎴栧鍣ㄥ搴﹂┍鍔紝鍑忓皯 viewport 璁＄畻宸紓銆?+- 婊戝姩鍒嗛〉瀹藉害缁х画鏀逛负浼樺厛鍙栫湡瀹?DOM 瀹藉害銆?+  - `pageWidth` 浼樺厛璇诲彇 `.content` 鐨?`clientWidth`锛宍contentWidth` 浼樺厛璇诲彇 `.content-inner` 鐨?`clientWidth`锛屽彧鏈夊彇涓嶅埌鏃舵墠鍥為€€鍒版棫閫昏緫銆?+- 鏈€鍚庤ˉ棣栧睆瀹藉害鏉ユ簮銆?+  - 灏嗗叏灞€ `windowSize.width` 鐨勫垵濮嬪寲鍜?resize 鏇存柊鏀逛负浼樺厛浣跨敤 `document.documentElement.clientWidth`锛岃棣栨娓叉煋鏃舵嬁鍒扮殑瀹藉害鏇存帴杩戠湡瀹炲彲瑙嗗尯鍩熴€?+
++### 鏈疆淇敼鏂囦欢
++- `web/src/views/Reader.vue`
++  - 鍥為€€浜嗘墜鏈烘ā寮忎笅涓ゆ帓鎸夐挳甯冨眬锛屾仮澶嶆垚宸﹀彸娴姩鎸夐挳鐨勬棫鏍峰紡銆?+  - 灏嗘墜鏈烘ā寮忎笅 `tool-bar`銆乣read-bar`銆乣.chapter`銆乣.top-bar` 鐨勫搴﹀鐞嗕粠 `100vw` 璋冩暣涓哄乏鍙宠创杈?/ `100%` / `width: auto`銆?+  - `refreshSlideMetrics()` 鏀逛负浼樺厛鎸?`.content` 鍜?`.content-inner` 鐨勭湡瀹?`clientWidth` 璁＄畻婊戝姩鍒嗛〉椤靛涓庢鏂囧銆?+  - `.chapter.slide-reader .content-inner` 涓?`.book-content` 鏀逛负鏄惧紡浣跨敤 `--slide-content-width` 鍜?`100%` fallback锛屽噺灏戣嚜鍔ㄥ搴﹀甫鏉ョ殑鍋忓樊銆?+- `web/src/App.vue`
++  - `resize` 鏃舵洿鏂?`windowSize.width` 鏀逛负浼樺厛浣跨敤 `document.documentElement.clientWidth`銆?+- `web/src/plugins/vuex.js`
++  - 鍒濆 `windowSize.width` 鏀逛负浼樺厛浣跨敤 `document.documentElement.clientWidth`銆?+
++### 鏈疆楠岃瘉
++- 鍓嶇 `npm.cmd run build` 宸查€氳繃銆?+- 淇浜嗚繖娆℃敼鍔ㄥ甫鍑虹殑琛屽熬鏍煎紡璀﹀憡鍚庯紝鍐嶆鏋勫缓閫氳繃锛屽墿浣欎粛鏄」鐩師鏈氨瀛樺湪鐨勪綋绉?/ Workbox 璀﹀憡銆?+- Docker Desktop 婧愮爜鐗堝鍣ㄥ凡閲嶆柊鏋勫缓骞跺惎鍔ㄣ€?+- 鍐嶆楠岃瘉 `http://localhost:18080/` 杩斿洖 `200`銆?+
++### 鍝簺杩樻病鏀瑰ソ
++- 杩欒疆宸茬粡鎶娾€滀袱鎺掓寜閽竷灞€鈥濆洖閫€锛屽苟缁х画鎶婃墜鏈洪槄璇婚〉鐨勫搴﹁绠椾笌 CSS 瀹藉害鏉ユ簮缁熶竴鍒颁簡鏇存帴杩戠湡瀹炲鍣ㄧ殑涓€濂楅€昏緫涓娿€?+- 浣嗗乏鍙抽棿璺濋棶棰樻槸鍚﹀凡缁忓畬鍏ㄦ敹鍙ｏ紝浠嶇劧闇€瑕佸湪瀹為檯鎵嬫満娴忚鍣?/ PWA 椤甸潰閲岀户缁娴嬬‘璁わ紝涓嶈兘鐩存帴璁颁负鈥滃交搴曚慨澶嶁€濄€?+- 鐢变簬椤圭洰鍚敤浜?PWA / service worker锛屽墠绔娴嬪墠浠嶉渶瑕佹敞鎰忔祻瑙堝櫒缂撳瓨褰卞搷銆?+  - 鏈€绋冲Ε鐨勬柟寮忎粛鐒舵槸寮哄埛涓€娆★紝鎴栬€呯洿鎺ュ交搴曞叧闂〉闈㈠悗閲嶅紑銆?+
++## 2026-03-11 浼氳瘽杩藉姞璁板綍锛堜笁锛?+
++### 淇敼鏃ユ湡
++- 2026-03-11
++
++### 鏈疆淇敼鎬濊矾
++- 鎺掓煡鎵嬫満绔乏鍙抽棿璺濆紓甯哥殑鏍瑰洜锛屽畾浣嶅埌涓変釜闂鐐癸細
++  1. `web/src/App.vue` 涓?`safeArea` 瑙ｆ瀽浣跨敤 `| 0`锛堜綅杩愮畻锛夛紝瀵艰嚧 CSS 鍊?`"20px"` 琚埅鏂负 0銆傝澶囧畨鍏ㄥ尯鍋忕Щ鍦?JS 灞傚缁堜负 0銆?+  2. `.content-inner` 鍚屾椂璁剧疆浜嗘樉寮?`width: var(--slide-content-width)` 鍜?`margin-left/right`锛屽彲鑳藉鑷存€诲搴︿笌瀹瑰櫒瀹藉害涓嶄竴鑷淬€?+  3. `.book-content` 鐨?CSS columns `column-width` 渚濊禆 CSS 鍙橀噺锛屽彲鑳戒笌瀹為檯娓叉煋瀹藉害鏈夊亸宸€?+
++### 鏈疆淇敼鏂囦欢
++- `web/src/App.vue`
++  - 灏?`safeArea` 鐨勫洓涓柟鍚戣В鏋愪粠 `docStyle.getPropertyValue("--sat") | 0` 鏀逛负 `parseInt(docStyle.getPropertyValue("--sat"), 10) || 0`銆?+- `web/src/views/Reader.vue`
++  - `.chapter.slide-reader .content-inner`锛氬皢 `width: var(--slide-content-width, calc(100% - 32px))` 鍜?`margin: 0 16px` 鏀逛负 `width: auto`锛屽彧淇濈暀 margin-left/right 鐨?CSS 鍙橀噺椹卞姩銆?+  - `.chapter.slide-reader .book-content`锛氬皢 `-webkit-columns` 鍜?`columns` 鐨?`column-width` 浠?`var(--slide-content-width, calc(100% - 32px))` 鏀逛负 `100%`銆?+
++### 鏈疆楠岃瘉
++- `npm.cmd run build` 宸查€氳繃锛屾棤鏂板缂栬瘧閿欒銆?+
++### 瀹為檯鏁堟灉锛堚潓 澶辫触锛?+- 鏈鏀瑰姩 **鏈慨澶?* 宸﹀彸闂磋窛闂銆?+- 鍙嶈€屽紩鍏ヤ簡鏂?bug锛?+  - **涓婁笅婊氬姩**锛坵eb 缃戞枃寮忛槄璇伙級姝ｅ父銆?+  - **涓婁笅婊戝姩** 鏃犳晥銆?+  - **宸﹀彸缈婚〉** 鏃犳晥銆?+- 鍘熷洜鎺ㄦ祴锛氬皢 `.content-inner` 鏀规垚 `width: auto` 鍚庯紝CSS multi-column 甯冨眬涓?`.book-content` 鐨?`columns: 100% 1` 鏃犳硶姝ｇ‘璁＄畻鍒楀锛坄100%` 鍦?column-width 涓婁笅鏂囦腑鍚箟涓嶅悓浜庡湪 width 灞炴€т腑锛夛紝瀵艰嚧鍒嗛〉鍒楀璁＄畻寮傚父锛岀炕椤靛拰婊戝姩閫昏緫浜у嚭鐨?`scrollWidth` / `totalPages` 鍊间笉姝ｇ‘銆?+- 杩欎簺鏀瑰姩闇€瑕?**鍥為€€鎴栭噸鏂颁慨姝?*銆?+
++### 褰撳墠鐘舵€?+- 涓婅堪鏀瑰姩浠嶄繚鐣欏湪浠ｇ爜涓紝灏氭湭鍥為€€銆?+- 宸﹀彸闂磋窛闂浠嶆湭鏀跺彛锛岄渶瑕佸湪鍚庣画浼氳瘽涓户缁帓鏌ュ拰淇銆?diff --git a/docker/reader/storage/defaultData/txtTocRule.json b/docker/reader/storage/defaultData/txtTocRule.json
+index 4ff663f..f3ff6b2 100644
+--- a/docker/reader/storage/defaultData/txtTocRule.json
++++ b/docker/reader/storage/defaultData/txtTocRule.json
+@@ -16,8 +16,8 @@
+     {
+         "id": -3,
+         "enable": true,
+-        "name": "鍐掑彿鍒嗗壊3",
+-        "rule": "^\\s*([^锛歕\n]{2,})锛??:鐣|鐗瑰埆绡??绗?[涓€浜屼笁鍥涗簲鍏竷鍏節鍗佺櫨鍗冧竾闆禲{1,6})绔燶\s+([^銆愩€?锛氾紝銆傦紒锛燂紱\\n]{4,50})\\s*$",
++        "name": "鍖归厤鍗峰悕銆佺珷鑺傚悕鍙婃爣棰?,
++        "rule": "^(.*?)[锛?](绗?+?绔爘骞曢棿[^锛?]+)[锛?](.+)$",
+         "serialNumber": 3
+     },
+     {
+diff --git a/gradle/wrapper/gradle-wrapper.properties b/gradle/wrapper/gradle-wrapper.properties
+index 1b16c34..baaa16c 100644
+--- a/gradle/wrapper/gradle-wrapper.properties
++++ b/gradle/wrapper/gradle-wrapper.properties
+@@ -1,5 +1,6 @@
++#Wed Mar 11 19:47:09 CST 2026
+ distributionBase=GRADLE_USER_HOME
++distributionUrl=https\://services.gradle.org/distributions/gradle-7.3.1-bin.zip
+ distributionPath=wrapper/dists
+-distributionUrl=https\://services.gradle.org/distributions/gradle-6.1.1-bin.zip
+-zipStoreBase=GRADLE_USER_HOME
+ zipStorePath=wrapper/dists
++zipStoreBase=GRADLE_USER_HOME
+diff --git a/scripts/gradle-jdk11.ps1 b/scripts/gradle-jdk11.ps1
+new file mode 100644
+index 0000000..470538a
+--- /dev/null
++++ b/scripts/gradle-jdk11.ps1
+@@ -0,0 +1,61 @@
++锘縫aram(
++    [Parameter(ValueFromRemainingArguments = $true)]
++    [string[]]$GradleArgs
++)
++
++$ErrorActionPreference = "Stop"
++
++function Get-Jdk11Home {
++    $candidates = @()
++
++    if ($env:JAVA11_HOME) {
++        $candidates += $env:JAVA11_HOME
++    }
++
++    $searchRoots = @(
++        (Join-Path $env:USERPROFILE ".jdks"),
++        "C:\Program Files\Eclipse Adoptium",
++        "C:\Program Files\Microsoft"
++    )
++
++    foreach ($root in $searchRoots) {
++        if (-not (Test-Path $root)) {
++            continue
++        }
++
++        $candidates += Get-ChildItem -Path $root -Directory -ErrorAction SilentlyContinue |
++            Where-Object { $_.Name -like "jdk-11*" -or $_.Name -like "microsoft-jdk-11*" } |
++            Sort-Object LastWriteTime -Descending |
++            Select-Object -ExpandProperty FullName
++    }
++
++    foreach ($candidate in $candidates | Select-Object -Unique) {
++        $javaExe = Join-Path $candidate "bin\java.exe"
++        if (Test-Path $javaExe) {
++            return $candidate
++        }
++    }
++
++    throw "JDK 11 not found. Install one under %USERPROFILE%\\.jdks or set JAVA11_HOME first."
++}
++
++$jdkHome = Get-Jdk11Home
++$env:JAVA_HOME = $jdkHome
++
++$pathParts = @("$jdkHome\bin")
++$pathParts += ($env:Path -split ";") | Where-Object {
++    $_ -and $_ -notmatch "\\jdk-11" -and $_ -notmatch "\\jdk-21" -and $_ -notmatch "\\jdk-8"
++}
++$env:Path = [string]::Join(";", $pathParts)
++
++Write-Host "Using JDK 11: $jdkHome"
++& "$jdkHome\bin\java.exe" -version
++
++& ".\gradlew.bat" --stop | Out-Null
++
++if (-not $GradleArgs -or $GradleArgs.Count -eq 0) {
++    $GradleArgs = @("test")
++}
++
++& ".\gradlew.bat" "--no-daemon" @GradleArgs
++exit $LASTEXITCODE
+diff --git a/src/main/java/com/htmake/reader/api/controller/BookController.kt b/src/main/java/com/htmake/reader/api/controller/BookController.kt
+index 8f487fc..ccc43ca 100644
+--- a/src/main/java/com/htmake/reader/api/controller/BookController.kt
++++ b/src/main/java/com/htmake/reader/api/controller/BookController.kt
+@@ -339,8 +339,9 @@ class BookController(coroutineContext: CoroutineContext): BaseController(corouti
+         var refresh: Int = 0
+         if (context.request().method() == HttpMethod.POST) {
+             // post 璇锋眰
+-            bookUrl = context.bodyAsJson.getString("url") ?: context.bodyAsJson.getJsonObject("book").getString("bookUrl") ?: ""
+-            refresh = context.bodyAsJson.getInteger("refresh", 0)
++            val body = context.bodyAsJson
++            bookUrl = body?.getString("url") ?: body?.getJsonObject("book")?.getString("bookUrl") ?: ""
++            refresh = body?.getInteger("refresh") ?: 0
+         } else {
+             // get 璇锋眰
+             bookUrl = context.queryParam("url").firstOrNull() ?: ""
+@@ -400,8 +401,9 @@ class BookController(coroutineContext: CoroutineContext): BaseController(corouti
+         var chapterIndex: Int
+         if (context.request().method() == HttpMethod.POST) {
+             // post 璇锋眰
+-            bookUrl = context.bodyAsJson.getString("url") ?: context.bodyAsJson.getJsonObject("searchBook").getString("bookUrl") ?: ""
+-            chapterIndex = context.bodyAsJson.getInteger("index", -1)
++            val body = context.bodyAsJson
++            bookUrl = body?.getString("url") ?: body?.getJsonObject("searchBook")?.getString("bookUrl") ?: ""
++            chapterIndex = body?.getInteger("index") ?: -1
+         } else {
+             // get 璇锋眰
+             bookUrl = context.queryParam("url").firstOrNull() ?: ""
+@@ -445,11 +447,12 @@ class BookController(coroutineContext: CoroutineContext): BaseController(corouti
+         var refresh: Int
+         if (context.request().method() == HttpMethod.POST) {
+             // post 璇锋眰
+-            chapterUrl = context.bodyAsJson.getString("chapterUrl") ?: context.bodyAsJson.getJsonObject("bookChapter")?.getString("url") ?: ""
+-            bookUrl = context.bodyAsJson.getString("url") ?: context.bodyAsJson.getJsonObject("searchBook")?.getString("bookUrl") ?: ""
+-            chapterIndex = context.bodyAsJson.getInteger("index", -1)
+-            cache = context.bodyAsJson.getInteger("cache", 0)
+-            refresh = context.bodyAsJson.getInteger("refresh", 0)
++            val body = context.bodyAsJson
++            chapterUrl = body?.getString("chapterUrl") ?: body?.getJsonObject("bookChapter")?.getString("url") ?: ""
++            bookUrl = body?.getString("url") ?: body?.getJsonObject("searchBook")?.getString("bookUrl") ?: ""
++            chapterIndex = body?.getInteger("index") ?: -1
++            cache = body?.getInteger("cache") ?: 0
++            refresh = body?.getInteger("refresh") ?: 0
+         } else {
+             // get 璇锋眰
+             chapterUrl = context.queryParam("chapterUrl").firstOrNull() ?: ""
+diff --git a/src/main/java/io/legado/app/help/DefaultData.kt b/src/main/java/io/legado/app/help/DefaultData.kt
+index 0d710f7..8405a7d 100644
+--- a/src/main/java/io/legado/app/help/DefaultData.kt
++++ b/src/main/java/io/legado/app/help/DefaultData.kt
+@@ -36,6 +36,10 @@ object DefaultData {
+     val txtTocRules: List<TxtTocRule>
+         get() = loadTxtTocRulesCached()
+ 
++    internal fun isBuiltinTxtTocRule(rule: String): Boolean {
++        return builtinTxtTocRules.any { it.rule == rule }
++    }
++
+     private fun loadTxtTocRulesCached(): List<TxtTocRule> {
+         val externalFile = externalTxtTocRulesFile()
+         val key = txtTocRulesCacheKey(externalFile)
+diff --git a/src/main/java/io/legado/app/model/localBook/TextFile.kt b/src/main/java/io/legado/app/model/localBook/TextFile.kt
+index 27abbf8..a687365 100644
+--- a/src/main/java/io/legado/app/model/localBook/TextFile.kt
++++ b/src/main/java/io/legado/app/model/localBook/TextFile.kt
+@@ -133,7 +133,7 @@ class TextFile(private val book: Book) {
+             return analyze()
+         }
+         pattern ?: return analyze()
+-        val strictCustomRule = DefaultData.txtTocRules.none { it.rule == pattern.pattern() }
++        val strictCustomRule = !DefaultData.isBuiltinTxtTocRule(pattern.pattern())
+         val toc = arrayListOf<BookChapter>()
+         LocalBook.getBookInputStream(book).use { bis ->
+             var blockContent: String
+diff --git a/src/test/kotlin/io/legado/app/model/localBook/TextFileTest.kt b/src/test/kotlin/io/legado/app/model/localBook/TextFileTest.kt
+index 604ea72..94bdbda 100644
+--- a/src/test/kotlin/io/legado/app/model/localBook/TextFileTest.kt
++++ b/src/test/kotlin/io/legado/app/model/localBook/TextFileTest.kt
+@@ -1,7 +1,11 @@
+ package io.legado.app.model.localBook
+ 
++import com.htmake.reader.utils.storageFinalPath
++import com.htmake.reader.utils.workDirInit
++import com.htmake.reader.utils.workDirPath
+ import io.legado.app.data.entities.Book
+ import io.legado.app.exception.TocEmptyException
++import io.legado.app.help.DefaultData
+ import org.junit.Assert.assertEquals
+ import org.junit.Assert.assertFalse
+ import org.junit.Assert.assertTrue
+@@ -26,8 +30,8 @@ class TextFileTest {
+     fun customRuleDoesNotTreatColonSubtitleAsVolume() {
+         assertFalse(
+             TextFile.shouldTreatAsVolume(
+-                "鐣鈶★細鏂板勾蹇箰",
+-                "鐣鈶★細鏂板勾蹇箰\n\n",
++                "鐣鈪細鏂板勾蹇箰",
++                "鐣鈪細鏂板勾蹇箰\n\n",
+                 true
+             )
+         )
+@@ -59,7 +63,10 @@ class TextFileTest {
+     fun customRuleParsingDoesNotMarkColonSubtitleChaptersAsVolume() {
+         val chapters = parseSample("(?m)^.*: .*$")
+ 
+-        assertEquals(listOf("鍓嶈█", "瑙掕壊A: 娆㈣繋鏉ュ埌浼氬満", "瑙掕壊B: 澶у鏂板勾蹇箰", "瑙掕壊C: 鐑熻姳鍗囩┖", "瑙掕壊D: 鏂板勾鐨勯挓澹板凡缁忓搷浜?), chapters.map { it.title })
++        assertEquals(
++            listOf("鍓嶈█", "瑙掕壊A: 娆㈣繋鏉ュ埌浼氬満", "瑙掕壊B: 澶у鏂板勾蹇箰", "瑙掕壊C: 鐑熻姳鍗囩┖", "瑙掕壊D: 鏂板勾鐨勯挓澹板凡缁忓搷浜?),
++            chapters.map { it.title }
++        )
+         assertEquals(listOf(false, false, false, false, false), chapters.map { it.isVolume })
+     }
+ 
+@@ -67,10 +74,38 @@ class TextFileTest {
+     fun customRuleParsingStillMarksPureVolumeTitleAsVolume() {
+         val chapters = parseSample("(?m)^(?:绗竴鍗穦瑙掕壊[A-D]: .*)$")
+ 
+-        assertEquals(listOf("绗竴鍗?, "瑙掕壊A: 娆㈣繋鏉ュ埌浼氬満", "瑙掕壊B: 澶у鏂板勾蹇箰", "瑙掕壊C: 鐑熻姳鍗囩┖", "瑙掕壊D: 鏂板勾鐨勯挓澹板凡缁忓搷浜?), chapters.map { it.title })
++        assertEquals(
++            listOf("绗竴鍗?, "瑙掕壊A: 娆㈣繋鏉ュ埌浼氬満", "瑙掕壊B: 澶у鏂板勾蹇箰", "瑙掕壊C: 鐑熻姳鍗囩┖", "瑙掕壊D: 鏂板勾鐨勯挓澹板凡缁忓搷浜?),
++            chapters.map { it.title }
++        )
+         assertEquals(listOf(true, false, false, false, false), chapters.map { it.isVolume })
+     }
+ 
++    @Test
++    fun externalCustomRuleStillUsesStrictVolumeHeuristics() {
++        withTempWorkDir { tempDir ->
++            val externalFile = tempDir.resolve("storage").resolve("defaultData").resolve(DefaultData.txtTocRuleFileName)
++            externalFile.parent.toFile().mkdirs()
++            Files.write(
++                externalFile,
++                """
++                [
++                  {
++                    "id": 659,
++                    "name": "issue-659-custom",
++                    "rule": "(?m)^.*: .*$",
++                    "serialNumber": 1,
++                    "enable": true
++                  }
++                ]
++                """.trimIndent().toByteArray(StandardCharsets.UTF_8)
++            )
++
++            val chapters = parseSample("(?m)^.*: .*$")
++            assertEquals(listOf(false, false, false, false, false), chapters.map { it.isVolume })
++        }
++    }
++
+     @Test(expected = TocEmptyException::class)
+     fun unmatchedRuleThrowsFriendlyTocEmptyException() {
+         try {
+@@ -101,4 +136,22 @@ class TextFileTest {
+             ?: error("missing issue-659 sample resource")
+         return stream.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
+     }
+-}
++
++    private fun withTempWorkDir(block: (java.nio.file.Path) -> Unit) {
++        val previousWorkDirPath = workDirPath
++        val previousWorkDirInit = workDirInit
++        val previousStorageFinalPath = storageFinalPath
++        val tempDir = Files.createTempDirectory("reader-textfile-test")
++        try {
++            workDirPath = tempDir.toString()
++            workDirInit = true
++            storageFinalPath = ""
++            block(tempDir)
++        } finally {
++            storageFinalPath = previousStorageFinalPath
++            workDirPath = previousWorkDirPath
++            workDirInit = previousWorkDirInit
++            tempDir.toFile().deleteRecursively()
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/web/public/sw.js b/web/public/sw.js
+index 9c897bf..f6677ef 100644
+--- a/web/public/sw.js
++++ b/web/public/sw.js
+@@ -1,6 +1,33 @@
++const RUNTIME_CACHE_NAMES = ["home", "SITE_CAHCE", "OPAQUE_CAHCE", "bookCover"];
++
++async function clearRuntimeCaches() {
++  const cacheNames = await self.caches.keys();
++  return Promise.all(
++    cacheNames
++      .filter(cacheName => {
++        return (
++          RUNTIME_CACHE_NAMES.indexOf(cacheName) >= 0 ||
++          cacheName.indexOf("reader-") === 0
++        );
++      })
++      .map(cacheName => self.caches.delete(cacheName))
++  );
++}
++
++self.addEventListener("activate", event => {
++  event.waitUntil(self.clients.claim());
++});
++
+ self.addEventListener("message", event => {
+-  if (event.data && event.data.type === "CLEAR_HOME_CACHE") {
+-    self.caches.delete("home");
++  if (!event.data || !event.data.type) {
++    return;
++  }
++  if (event.data.type === "CLEAR_HOME_CACHE") {
++    event.waitUntil(self.caches.delete("home"));
++    return;
++  }
++  if (event.data.type === "CLEAR_RUNTIME_CACHES") {
++    event.waitUntil(clearRuntimeCaches());
+   }
+ });
+ 
+diff --git a/web/src/App.vue b/web/src/App.vue
+index 229ee27..66f8a65 100644
+--- a/web/src/App.vue
++++ b/web/src/App.vue
+@@ -270,7 +270,7 @@ export default {
+       );
+       this.$store.commit("setMiniInterface", isMiniInterface());
+       this.$store.commit("setWindowSize", {
+-        width: window.innerWidth,
++        width: document.documentElement.clientWidth || window.innerWidth,
+         height: window.innerHeight
+       });
+       this.$store.commit("setTouchable", "ontouchstart" in document);
+@@ -302,10 +302,10 @@ export default {
+     try {
+       const docStyle = getComputedStyle(document.documentElement);
+       this.$store.commit("setSafeArea", {
+-        top: docStyle.getPropertyValue("--sat") | 0,
+-        bottom: docStyle.getPropertyValue("--sab") | 0,
+-        left: docStyle.getPropertyValue("--sal") | 0,
+-        right: docStyle.getPropertyValue("--sar") | 0
++        top: parseInt(docStyle.getPropertyValue("--sat"), 10) || 0,
++        bottom: parseInt(docStyle.getPropertyValue("--sab"), 10) || 0,
++        left: parseInt(docStyle.getPropertyValue("--sal"), 10) || 0,
++        right: parseInt(docStyle.getPropertyValue("--sar"), 10) || 0
+       });
+     } catch (error) {
+       //
+diff --git a/web/src/plugins/vuex.js b/web/src/plugins/vuex.js
+index 8c0ddfc..6f88bd0 100644
+--- a/web/src/plugins/vuex.js
++++ b/web/src/plugins/vuex.js
+@@ -28,7 +28,7 @@ export default new Vuex.Store({
+     config: { ...settings.config },
+     miniInterface: false,
+     windowSize: {
+-      width: window.innerWidth,
++      width: document.documentElement.clientWidth || window.innerWidth,
+       height: window.innerHeight
+     },
+     touchable: "ontouchstart" in document,
+diff --git a/web/src/registerServiceWorker.js b/web/src/registerServiceWorker.js
+index df17e9f..1d281cb 100644
+--- a/web/src/registerServiceWorker.js
++++ b/web/src/registerServiceWorker.js
+@@ -24,7 +24,22 @@ export function registerServiceWorker() {
+             );
+             const newVersion = process.env.VUE_APP_BUILD_VERSION;
+             if (currentVersion !== newVersion) {
+-              registration.active.postMessage({ type: "SKIP_WAITING" });
++              const workers = [
++                registration.active,
++                registration.waiting,
++                registration.installing
++              ].filter((worker, index, list) => {
++                return worker && list.indexOf(worker) === index;
++              });
++              workers.forEach(worker => {
++                try {
++                  worker.postMessage({ type: "CLEAR_RUNTIME_CACHES" });
++                  worker.postMessage({ type: "SKIP_WAITING" });
++                } catch (error) {
++                  // ignore worker messaging failures during registration races
++                }
++              });
++              registration.update && registration.update().catch(() => {});
+               window.localStorage.setItem(
+                 "READER_APP_BUILD_VERSION",
+                 newVersion
+diff --git a/web/src/views/Reader.vue b/web/src/views/Reader.vue
+index 636ac15..45ea31a 100644
+--- a/web/src/views/Reader.vue
++++ b/web/src/views/Reader.vue
+@@ -645,6 +645,14 @@ export default {
+       }
+     },
+     readingBook(val, oldVal) {
++      oldVal = oldVal || {};
++      if (this.pendingInit && val && val.bookUrl) {
++        this.pendingInit = false;
++        this.$nextTick(() => {
++          this.init(true);
++        });
++        return;
++      }
+       if (val.bookUrl !== oldVal.bookUrl) {
+         this.startSavePosition = false;
+         this.autoShowPosition();
+@@ -702,9 +710,13 @@ export default {
+       showToolBar: true,
+       book: null,
+       show: false,
++      pendingInit: false,
+       contentStyle: {},
+       currentPage: 1,
+       totalPages: 1,
++      slidePageWidth: 0,
++      slideContentWidth: 0,
++      slideColumnGap: 0,
+       transformX: 0,
+       transforming: false,
+       showLastPage: false,
+@@ -796,18 +808,55 @@ export default {
+         ? "audio"
+         : "";
+     },
++    slidePaddingLeft() {
++      return 16 + ((this.$store.state.safeArea || {}).left | 0);
++    },
++    slidePaddingRight() {
++      return 16 + ((this.$store.state.safeArea || {}).right | 0);
++    },
++    slidePageWidthValue() {
++      return this.slidePageWidth || this.windowSize.width;
++    },
++    slideContentWidthValue() {
++      return (
++        this.slideContentWidth ||
++        Math.max(
++          this.slidePageWidthValue -
++            this.slidePaddingLeft -
++            this.slidePaddingRight,
++          1
++        )
++      );
++    },
++    slideColumnGapValue() {
++      return (
++        this.slideColumnGap ||
++        Math.max(this.slidePageWidthValue - this.slideContentWidthValue, 0)
++      );
++    },
+     chapterTheme() {
+       let readingStyle = this.showReadBar
+         ? { paddingBottom: (this.showSpeechConfig ? 280 : 80) + "px" }
+         : {};
++      const slideTheme = this.$store.state.miniInterface
++        ? {
++            "--slide-padding-left": this.slidePaddingLeft + "px",
++            "--slide-padding-right": this.slidePaddingRight + "px",
++            "--slide-page-width": this.slidePageWidthValue + "px",
++            "--slide-content-width": this.slideContentWidthValue + "px",
++            "--slide-column-gap": this.slideColumnGapValue + "px"
++          }
++        : {};
+       if (typeof this.$store.getters.currentThemeConfig.content === "string") {
+         return {
++          ...slideTheme,
+           ...readingStyle,
+           background: this.$store.getters.currentThemeConfig.content,
+           width: this.readWidth
+         };
+       } else {
+         return {
++          ...slideTheme,
+           ...readingStyle,
+           ...this.$store.getters.currentThemeConfig.content,
+           width: this.readWidth
+@@ -846,7 +895,7 @@ export default {
+           : -(this.readWidthConfig / 2) + "px",
+         zIndex: 200,
+         display: this.speechAvalable && this.showReadBar ? "block" : "none",
+-        width: this.$store.state.miniInterface ? "100vw" : "500px"
++        width: this.$store.state.miniInterface ? "100%" : "500px"
+       };
+     },
+     readWidth() {
+@@ -1049,46 +1098,47 @@ export default {
+   },
+   methods: {
+     init(refresh) {
+-      if (this.$store.getters.readingBook) {
+-        if (
+-          refresh ||
+-          !this.lastReadingBook ||
+-          this.lastReadingBook.bookUrl !==
+-            this.$store.getters.readingBook.bookUrl
+-        ) {
+-          this.title = "";
+-          this.show = false;
+-          this.loading = this.$loading({
+-            target: this.$refs.content,
+-            lock: true,
+-            text: "姝ｅ湪鑾峰彇鍐呭",
+-            spinner: "el-icon-loading",
+-            background: "rgba(0,0,0,0)"
++      const readingBook = this.$store.getters.readingBook || {};
++      if (!readingBook.bookUrl) {
++        this.pendingInit = true;
++        return;
++      }
++      this.pendingInit = false;
++      if (
++        refresh ||
++        !this.lastReadingBook ||
++        this.lastReadingBook.bookUrl !== readingBook.bookUrl
++      ) {
++        this.title = "";
++        this.show = false;
++        this.loading = this.$loading({
++          target: this.$refs.content,
++          lock: true,
++          text: "姝ｅ湪鑾峰彇鍐呭",
++          spinner: "el-icon-loading",
++          background: "rgba(0,0,0,0)"
++        });
++        this.lastReadingBook = readingBook;
++        // 璺宠浆璁颁綇鐨勪綅缃?+        this.autoShowPosition();
++        this.loadCatalog(false, true);
++      } else {
++        if (this.isScrollRead) {
++          this.scrollStartChapterIndex = this.chapterIndex;
++          this.showPrevChapterSize = 0;
++          this.computeShowChapterList().then(() => {
++            this.autoShowPosition(true);
+           });
+-          this.lastReadingBook = this.$store.getters.readingBook;
++        } else if (this.isEpub) {
+           // 璺宠浆璁颁綇鐨勪綅缃?-          this.autoShowPosition();
+-          this.loadCatalog(false, true);
++          this.autoShowPosition(true);
+         } else {
+-          if (this.isScrollRead) {
+-            this.scrollStartChapterIndex = this.chapterIndex;
+-            this.showPrevChapterSize = 0;
+-            this.computeShowChapterList().then(() => {
+-              this.autoShowPosition(true);
+-            });
+-          } else if (this.isEpub) {
+-            // 璺宠浆璁颁綇鐨勪綅缃?-            this.autoShowPosition(true);
+-          } else {
+-            this.startSavePosition = true;
+-          }
+-          setTimeout(() => {
+-            // console.log("setReadingBook", this.lastReadingBook);
+-            this.$store.commit("setReadingBook", this.lastReadingBook);
+-          }, 100);
++          this.startSavePosition = true;
+         }
+-      } else {
+-        this.$message.error("璇峰湪涔︽灦閫夋嫨涔︾睄");
++        setTimeout(() => {
++          // console.log("setReadingBook", this.lastReadingBook);
++          this.$store.commit("setReadingBook", this.lastReadingBook);
++        }, 100);
+       }
+     },
+     changeBook(book) {
+@@ -1109,7 +1159,7 @@ export default {
+       if (!this.api) {
+         setTimeout(() => {
+           if (this.loadCatalog) {
+-            this.loadCatalog(refresh);
++            this.loadCatalog(refresh, init);
+           }
+         }, 1000);
+         return;
+@@ -1135,6 +1185,13 @@ export default {
+           }
+         },
+         error => {
++          if (init) {
++            this.title = "";
++            this.content = "鑾峰彇绔犺妭鐩綍澶辫触锛乗n" + (error && error.toString());
++            this.error = true;
++            this.show = true;
++            this.$emit("showContent");
++          }
+           this.loading.close();
+           this.$message.error(
+             "鑾峰彇涔︾睄鐩綍鍒楄〃 " + (error && error.toString())
+@@ -1143,6 +1200,9 @@ export default {
+       );
+     },
+     getCatalog(refresh) {
++      if (!this.$store.getters.readingBook.bookUrl) {
++        return Promise.reject(new Error("姝ｅ湪鎭㈠闃呰杩涘害锛岃绋嶅悗閲嶈瘯"));
++      }
+       const params = {
+         url: this.$store.getters.readingBook.bookUrl,
+         refresh: refresh ? 1 : 0
+@@ -1555,6 +1615,55 @@ export default {
+     toShelf() {
+       this.$router.push("/");
+     },
++    refreshSlideMetrics() {
++      const fallbackPageWidth = this.windowSize.width;
++      const fallbackContentWidth = Math.max(
++        fallbackPageWidth - this.slidePaddingLeft - this.slidePaddingRight,
++        1
++      );
++      if (!this.isSlideRead) {
++        this.slidePageWidth = fallbackPageWidth;
++        this.slideContentWidth = fallbackContentWidth;
++        this.slideColumnGap = Math.max(
++          fallbackPageWidth - fallbackContentWidth,
++          0
++        );
++        return;
++      }
++      let pageWidth = fallbackPageWidth;
++      const contentPage =
++        this.$refs.content && this.$refs.content.querySelector(".content");
++      if (contentPage && contentPage.clientWidth) {
++        pageWidth = contentPage.clientWidth;
++      } else if (this.$refs.content && this.$refs.content.clientWidth) {
++        pageWidth = this.$refs.content.clientWidth;
++      } else if (this.$refs.content) {
++        const pageRect = this.$refs.content.getBoundingClientRect();
++        if (pageRect && pageRect.width) {
++          pageWidth = Math.round(pageRect.width);
++        }
++      }
++      let contentWidth = fallbackContentWidth;
++      const contentInner =
++        this.$refs.bookContentRef &&
++        this.$refs.bookContentRef.$el &&
++        this.$refs.bookContentRef.$el.parentElement;
++      if (contentInner && contentInner.clientWidth) {
++        contentWidth = contentInner.clientWidth;
++      } else if (contentInner) {
++        const contentRect = contentInner.getBoundingClientRect();
++        if (contentRect && contentRect.width) {
++          contentWidth = Math.round(contentRect.width);
++        }
++      }
++      contentWidth = Math.min(contentWidth, pageWidth);
++      this.slidePageWidth = pageWidth;
++      this.slideContentWidth = contentWidth;
++      this.slideColumnGap = Math.max(pageWidth - contentWidth, 0);
++    },
++    getSlidePageWidth() {
++      return this.slidePageWidthValue;
++    },
+     computePages(cb) {
+       if (!this.$refs.bookContentRef || !this.$refs.bookContentRef.$el) {
+         setTimeout(() => {
+@@ -1563,9 +1672,9 @@ export default {
+         return;
+       }
+       if (this.isSlideRead) {
++        this.refreshSlideMetrics();
+         this.totalPages = Math.ceil(
+-          this.$refs.bookContentRef.$el.scrollWidth /
+-            (this.windowSize.width - 16)
++          this.$refs.bookContentRef.$el.scrollWidth / this.getSlidePageWidth()
+         );
+       } else {
+         this.totalPages = Math.ceil(
+@@ -1590,14 +1699,12 @@ export default {
+         if (this.currentPage < this.totalPages) {
+           if (typeof moveX === "undefined") {
+             this.transformX =
+-              -(this.windowSize.width - 16) * (this.currentPage - 1);
++              -this.getSlidePageWidth() * (this.currentPage - 1);
+           }
+           this.currentPage += 1;
+           this.transforming = true;
+           this.transform(
+-            typeof moveX === "undefined"
+-              ? -(this.windowSize.width - 16)
+-              : moveX,
++            typeof moveX === "undefined" ? -this.getSlidePageWidth() : moveX,
+             this.animateMSTime
+           );
+         } else {
+@@ -1635,12 +1742,12 @@ export default {
+         if (this.currentPage > 1) {
+           if (typeof moveX === "undefined") {
+             this.transformX =
+-              -(this.windowSize.width - 16) * (this.currentPage - 1);
++              -this.getSlidePageWidth() * (this.currentPage - 1);
+           }
+           this.currentPage -= 1;
+           this.transforming = true;
+           this.transform(
+-            typeof moveX === "undefined" ? this.windowSize.width - 16 : moveX,
++            typeof moveX === "undefined" ? this.getSlidePageWidth() : moveX,
+             this.animateMSTime
+           );
+         } else {
+@@ -1673,8 +1780,7 @@ export default {
+       this.currentPage = Math.min(page, this.totalPages);
+       if (this.isSlideRead) {
+         const moveX =
+-          -(this.windowSize.width - 16) * (this.currentPage - 1) -
+-          this.transformX;
++          -this.getSlidePageWidth() * (this.currentPage - 1) - this.transformX;
+         this.transform(
+           moveX,
+           typeof duration === "undefined" ? this.animateMSTime : duration
+@@ -1808,10 +1914,10 @@ export default {
+         this.transformX += this.lastMoveX;
+         if (this.lastMoveX > 0) {
+           // 涓婁竴椤?-          this.prevPage(this.windowSize.width - 16 - this.lastMoveX);
++          this.prevPage(this.getSlidePageWidth() - this.lastMoveX);
+         } else {
+           // 涓嬩竴椤?-          this.nextPage(-(this.windowSize.width - 16) - this.lastMoveX);
++          this.nextPage(-this.getSlidePageWidth() - this.lastMoveX);
+         }
+       } else if (Math.abs(this.lastMoveY) <= 3 && this.lastTouch) {
+         this.eventHandler(this.lastTouch);
+@@ -2408,9 +2514,9 @@ export default {
+         // 璺宠浆浣嶇疆
+         this.$nextTick(() => {
+           const pos = paragraph.getBoundingClientRect();
+-          if (pos.left > this.windowSize.width - 16) {
++          if (pos.left > this.getSlidePageWidth()) {
+             this.showPage(
+-              Math.round(pos.left / (this.windowSize.width - 16)) + 1,
++              Math.round(pos.left / this.getSlidePageWidth()) + 1,
+               0
+             );
+           }
+@@ -3617,7 +3723,8 @@ export default {
+ 
+   .tool-bar {
+     left: 0;
+-    width: 100vw;
++    right: 0;
++    width: auto;
+     margin-left: 0 !important;
+ 
+     .tools {
+@@ -3630,8 +3737,9 @@ export default {
+   }
+ 
+   .read-bar {
++    left: 0;
+     right: 0;
+-    width: 100vw;
++    width: auto;
+     margin-right: 0 !important;
+ 
+     .cache-content-zone {
+@@ -3683,8 +3791,13 @@ export default {
+   }
+ 
+   .chapter {
+-    width: 100vw !important;
++    width: 100% !important;
++    // 寮哄埗鍥哄畾鎵嬫満妯″紡闃呰鍖哄乏鍙抽棿璺濓紙瑙勯伩鑷畾涔夌洰褰曡鍒欒Е鍙戠殑鏍峰紡寮傚父锛?     padding: 0 16px;
++    padding-left: calc(16px + constant(safe-area-inset-left)) !important;
++    padding-left: calc(16px + env(safe-area-inset-left)) !important;
++    padding-right: calc(16px + constant(safe-area-inset-right)) !important;
++    padding-right: calc(16px + env(safe-area-inset-right)) !important;
+     box-sizing: border-box;
+     border: none;
+     text-align: justify;
+@@ -3694,7 +3807,8 @@ export default {
+       position: fixed;
+       top: 0;
+       left: 0;
+-      width: 100vw;
++      right: 0;
++      width: auto;
+       z-index: 50;
+       background: inherit;
+       height: 30px;
+@@ -3703,6 +3817,10 @@ export default {
+       padding: 6px 16px;
+       padding-top: calc(6px + constant(safe-area-inset-top));
+       padding-top: calc(6px + env(safe-area-inset-top));
++      padding-left: var(--slide-padding-left, calc(16px + constant(safe-area-inset-left)));
++      padding-left: var(--slide-padding-left, calc(16px + env(safe-area-inset-left)));
++      padding-right: var(--slide-padding-right, calc(16px + constant(safe-area-inset-right)));
++      padding-right: var(--slide-padding-right, calc(16px + env(safe-area-inset-right)));
+       font-size: 12px;
+     }
+ 
+@@ -3717,6 +3835,8 @@ export default {
+ 
+   .chapter.cartoon {
+     padding: 0;
++    padding-left: 0 !important;
++    padding-right: 0 !important;
+ 
+     .content-inner {
+       padding-top: 1px;
+@@ -3725,14 +3845,23 @@ export default {
+ 
+   .chapter.slide-reader {
+     padding: 0;
++    padding-left: 0 !important;
++    padding-right: 0 !important;
+     height: 100%;
+ 
+     .bottom-bar {
+       height: 24px;
+       position: absolute;
+       bottom: 0;
++      left: 0;
++      right: 0;
+       padding: 0 16px;
++      padding-left: var(--slide-padding-left, calc(16px + constant(safe-area-inset-left)));
++      padding-left: var(--slide-padding-left, calc(16px + env(safe-area-inset-left)));
++      padding-right: var(--slide-padding-right, calc(16px + constant(safe-area-inset-right)));
++      padding-right: var(--slide-padding-right, calc(16px + env(safe-area-inset-right)));
+       padding-bottom: 6px;
++      box-sizing: border-box;
+       display: flex;
+       justify-content: space-between;
+       font-size: 12px;
+@@ -3749,22 +3878,31 @@ export default {
+       top: calc(30px + constant(safe-area-inset-top));
+       top: calc(30px + env(safe-area-inset-top));
+       bottom: 24px;
++      left: 0;
++      right: 0;
+     }
+ 
+     .content-inner {
+-      margin: 0 16px;
++      width: auto;
++      margin-left: var(--slide-padding-left, calc(16px + constant(safe-area-inset-left))) !important;
++      margin-left: var(--slide-padding-left, calc(16px + env(safe-area-inset-left))) !important;
++      margin-right: var(--slide-padding-right, calc(16px + constant(safe-area-inset-right))) !important;
++      margin-right: var(--slide-padding-right, calc(16px + env(safe-area-inset-right))) !important;
+       overflow: hidden;
+       text-align: justify;
+       padding: 0;
+       height: 100%;
++      box-sizing: border-box;
+     }
+ 
+     .book-content {
++      width: 100%;
+       height: 100%;
+-      -webkit-columns: calc(100vw - 32px) 1;
+-      -webkit-column-gap: 32px;
+-      columns: calc(100vw - 16px) 1;
+-      column-gap: 16px;
++      box-sizing: border-box;
++      -webkit-columns: 100% 1;
++      -webkit-column-gap: var(--slide-column-gap, 32px);
++      columns: 100% 1;
++      column-gap: var(--slide-column-gap, 32px);
+     }
+   }
+ }
