@@ -317,6 +317,28 @@
             >
           </div>
         </li>
+        <li v-if="$store.state.miniInterface">
+          <span class="setting-item-title"
+            >&#x5DE6;&#x53F3;&#x95F4;&#x8DDD;</span
+          >
+          <div class="resize">
+            <span class="less" @click="decConfig('mobileSidePaddingOffset')"
+              ><i class="el-icon-minus"></i></span
+            ><b></b>
+            <span class="lang">{{
+              config.mobileSidePaddingOffset > 0
+                ? "+" + config.mobileSidePaddingOffset
+                : config.mobileSidePaddingOffset
+            }}</span
+            ><b></b>
+            <span class="more" @click="incConfig('mobileSidePaddingOffset')"
+              ><i class="el-icon-plus"></i
+            ></span>
+          </div>
+          <span class="small-tip"
+            >&#x57FA;&#x4E8E;&#x81EA;&#x9002;&#x5E94;&#x5BBD;&#x5EA6;&#x8FDB;&#x884C;&#x5FAE;&#x8C03;</span
+          >
+        </li>
         <li>
           <span class="setting-item-title">翻页方式</span>
           <div class="selection-zone">
@@ -518,6 +540,7 @@ export default {
         autoReadingLineTime: { min: 10, delta: 50 },
         lineHeight: { min: 1, max: 5, delta: 0.2 },
         paragraphSpace: { min: 0, max: 5, delta: 0.2 },
+        mobileSidePaddingOffset: { min: -16, max: 32, delta: 2 },
         readWidth: {
           min: Math.min(Math.floor(window.innerWidth / 160), 4) * 160,
           max: Math.floor(window.innerWidth / 160) * 160,

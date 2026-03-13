@@ -36,6 +36,7 @@ const defaultDayConfig = {
   readWidth: 800,
   lineHeight: 1.8, // 行高
   paragraphSpace: 0.2, // 段间距
+  mobileSidePaddingOffset: 0,
   autoReadingMethod: "像素滚动",
   autoReadingPixel: 1,
   autoReadingLineTime: 1000,
@@ -61,6 +62,7 @@ const defaultNightConfig = {
   readWidth: 800,
   lineHeight: 1.8, // 行高
   paragraphSpace: 0.2, // 段间距
+  mobileSidePaddingOffset: 0,
   autoReadingMethod: "像素滚动",
   autoReadingPixel: 1,
   autoReadingLineTime: 1000,

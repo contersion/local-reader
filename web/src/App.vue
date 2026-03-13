@@ -256,26 +256,6 @@ export default {
   beforeCreate() {
     this.$store.dispatch("syncFromLocalStorage");
 
-    this.$store.commit("setMiniInterface", isMiniInterface());
-
-    document.documentElement.style.setProperty(
-      "--vh",
-      `${window.innerHeight * 0.01}px`
-    );
-
-    window.onresize = () => {
-      document.documentElement.style.setProperty(
-        "--vh",
-        `${window.innerHeight * 0.01}px`
-      );
-      this.$store.commit("setMiniInterface", isMiniInterface());
-      this.$store.commit("setWindowSize", {
-        width: document.documentElement.clientWidth || window.innerWidth,
-        height: window.innerHeight
-      });
-      this.$store.commit("setTouchable", "ontouchstart" in document);
-    };
-
     const api = window.getQueryString("api");
     if (api) {
       this.$store.commit("setApi", api);
@@ -298,20 +278,12 @@ export default {
     //   "--status-bar-height",
     //   `${window.webAppDistance}px`
     // );
-
-    try {
-      const docStyle = getComputedStyle(document.documentElement);
-      this.$store.commit("setSafeArea", {
-        top: parseInt(docStyle.getPropertyValue("--sat"), 10) || 0,
-        bottom: parseInt(docStyle.getPropertyValue("--sab"), 10) || 0,
-        left: parseInt(docStyle.getPropertyValue("--sal"), 10) || 0,
-        right: parseInt(docStyle.getPropertyValue("--sar"), 10) || 0
-      });
-    } catch (error) {
-      //
-    }
   },
   created() {
+    window.onresize = () => {
+      this.syncViewportMetrics();
+    };
+    this.syncViewportMetrics();
     window
       .matchMedia("(prefers-color-scheme: dark)")
       .addEventListener("change", () => {
@@ -382,10 +354,7 @@ export default {
     });
   },
   mounted() {
-    document.documentElement.style.setProperty(
-      "--vh",
-      `${window.innerHeight * 0.01}px`
-    );
+    this.syncViewportMetrics();
     window.reader = this;
   },
   computed: {
@@ -466,6 +435,32 @@ export default {
     }
   },
   methods: {
+    syncSafeArea() {
+      try {
+        const docStyle = getComputedStyle(document.documentElement);
+        this.$store.commit("setSafeArea", {
+          top: parseInt(docStyle.getPropertyValue("--sat"), 10) || 0,
+          bottom: parseInt(docStyle.getPropertyValue("--sab"), 10) || 0,
+          left: parseInt(docStyle.getPropertyValue("--sal"), 10) || 0,
+          right: parseInt(docStyle.getPropertyValue("--sar"), 10) || 0
+        });
+      } catch (error) {
+        //
+      }
+    },
+    syncViewportMetrics() {
+      document.documentElement.style.setProperty(
+        "--vh",
+        `${window.innerHeight * 0.01}px`
+      );
+      this.$store.commit("setMiniInterface", isMiniInterface());
+      this.$store.commit("setWindowSize", {
+        width: document.documentElement.clientWidth || window.innerWidth,
+        height: window.innerHeight
+      });
+      this.$store.commit("setTouchable", "ontouchstart" in document);
+      this.syncSafeArea();
+    },
     autoSetTheme(autoTheme) {
       if (autoTheme) {
         if (window.matchMedia("(prefers-color-scheme: dark)").matches) {

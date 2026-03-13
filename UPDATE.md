@@ -252,3 +252,135 @@ powershell -ExecutionPolicy Bypass -File .\scripts\gradle-jdk11.ps1 test --tests
 ### 使用说明 / 风险提示
 - 由于项目启用了 PWA / service worker，如果终端设备仍看到旧的导入弹窗样式，优先执行一次强刷，或彻底关闭页面后重新打开。
 - 本轮线上生效方式是“热补丁当前容器内 jar”，仓库代码已经更新，但后续若重新拉起镜像，仍建议在网络稳定时补做一次标准 Docker 重建，避免运行态与镜像产物脱节。
+## 2026-03-13 会话追加记录（五）
+
+### 修改日期
+- 2026-03-13
+
+### 本轮新增问题定位
+- 安全区数据此前只在 `App.vue` 的 `mounted` 阶段读取一次，而 `Reader.vue` 可能已经先按 `safeArea = 0` 完成了首轮分页计算。
+- 这样会出现一个时序错位：CSS 已经按真实安全区收紧了左右留白，但分页宽度、总页数和当前页位移仍沿用旧值，导致手机左右滑动阅读页出现左右间距不一致、页内容错位等现象。
+- 同时，窗口尺寸变化时此前只更新了 `windowSize`，没有同步刷新 `safeArea`，因此旋转屏幕或 PWA 视口变化后，左右间距也可能继续使用过期数据。
+
+### 本轮修改思路
+- 先把视口高度、窗口尺寸、触摸能力和安全区同步逻辑收敛到同一个入口，保证初始化、`resize`、`mounted` 后补偿这三条链路拿到的是同一套数据。
+- 再让阅读页显式监听 `safeArea` 变化，在安全区更新后重新计算分页，并把当前位置重新对齐到当前页，避免 CSS 宽度变了但分页状态没跟上。
+- 顺手把阅读页内部几处仍通过位运算读取安全区顶部偏移的逻辑改为统一的数值读取方法，避免后续再混入隐式类型转换。
+
+### 本轮修改文件
+- `web/src/App.vue`
+  - 新增 `syncSafeArea()` 与 `syncViewportMetrics()`，统一处理 `--vh`、`windowSize`、`touchable`、`safeArea` 同步。
+  - 将初始化和 `window.onresize` 的视口同步改为复用 `syncViewportMetrics()`。
+  - 在 `mounted` 后再次补跑一次视口同步，覆盖首屏渲染与根组件挂载时序差。
+- `web/src/views/Reader.vue`
+  - 新增 `safeArea` 计算属性与 watcher，安全区变化后重新执行 `computePages()` 和 `showPage()`。
+  - 抽出 `getSafeAreaInset()` 与 `refreshPageLayout()`，统一左右/顶部安全区读取和重排入口。
+  - 将滑动阅读页的左右 padding 计算，以及若干顶部定位/滚动偏移逻辑，统一改为走 `getSafeAreaInset()`。
+
+### 本轮验证
+- 前端 `npm.cmd run build` 已通过。
+- 构建结果无新增编译错误；仍保留项目原本已有的包体积 / Workbox 警告。
+
+### 还需要继续确认的点
+- 这轮修复的是“安全区真实值到达后，阅读页没有重新分页”的链路问题，理论上能覆盖一类很像你截图表现的左右间距错位。
+- 但是否已经彻底收口，仍需要在实际手机浏览器 / PWA 页面里复测确认，尤其要看：
+  - 首次进入阅读页时左右留白是否已经对齐。
+  - 刘海屏 / 非对称安全区设备上左右翻页后是否仍会出现上一页内容挤入。
+  - 旋转屏幕后分页宽度和正文边距是否会跟着重新对齐。
+### 本轮热更新部署
+- 已从运行中的 `reader` 容器导出当前 `/app/bin/reader.jar` 到本地 `build/reader-live.jar`。
+- 已将本轮新构建的 `web/dist` 更新进 jar 内 `BOOT-INF/classes/web`。
+- 已将补丁后的 `reader-live.jar` 回写到容器 `/app/bin/reader.jar`，并执行 `docker restart reader`。
+
+### 部署后确认
+- `docker compose -f docker-compose.yml -f docker-compose.source.yml ps` 显示 `reader` 容器已恢复运行。
+- `http://localhost:18080/` 返回 `HTTP 200`。
+- 首页返回内容已包含这轮新资源标记：
+  - `app.0288f93e.js`
+  - `reader.6ee311a7.js`
+  - `css/app.f0fe790a.css`
+## 2026-03-13 会话追加记录（六）
+
+### 修改日期
+- 2026-03-13
+
+### 本轮新增问题定位
+- 上一轮修掉的是“安全区到达后未重新分页”的时序问题，但你这次反馈说明真正的阅读体验问题还在：正文可用宽度本身仍然过大。
+- 也就是说，这一轮的根因不再是“算错了”，而是“就算算对了，正文依然太满、左右留白依然不够”。
+- 之前移动端正文横向留白的基础值仍接近 `16px`，在当前字体与主题背景下，版面视觉上还是偏挤，单行承载文字偏多。
+
+### 本轮修改思路
+- 不再继续围绕分页偏移做解释型修复，而是直接收窄移动端正文的真实可读宽度。
+- 将移动端正文的基础横向留白从固定小边距调整为随视口宽度动态放大的更宽边距。
+- 让普通阅读模式和左右滑动分页模式统一吃到这套更宽的边距来源，避免两条链路视觉效果不一致。
+
+### 本轮修改文件
+- `web/src/views/Reader.vue`
+  - 新增 `mobileReaderPaddingBase()`，按移动端视口宽度动态计算正文基础横向留白，范围约束在 `24px ~ 36px`。
+  - `slidePaddingLeft()` / `slidePaddingRight()` 改为基于 `mobileReaderPaddingBase()` 叠加安全区，不再使用原先偏小的固定基础值。
+  - 移动端 `.chapter` 的左右 padding 改为跟随 `--slide-padding-left/right`，让普通阅读和滑动阅读使用一致的更宽正文留白。
+
+### 本轮验证
+- 前端 `npm.cmd run build` 已通过。
+- 热更新后，`http://localhost:18080/` 返回 `HTTP 200`。
+- 当前线上首页已包含本轮新资源：
+  - `app.fa7092c4.js`
+  - `reader.30c453ad.js`
+  - `css/app.79bd1202.css`
+  - `css/reader.a4176fa4.css`
+
+### 本轮热更新部署
+- 已重新导出运行中容器内的 `reader.jar`。
+- 已将本轮最新 `web/dist` 覆盖进 jar 内 `BOOT-INF/classes/web`。
+- 已将补丁后的 jar 回写至 `reader` 容器并重启容器。
+
+### 还需要继续确认的点
+- 这轮已经不是“修复看不见的计算误差”，而是“直接把正文做窄一点”。
+- 接下来最关键的确认项只有一个：实际手机 / PWA 页面里，正文左右留白是否已经明显比上一版更宽，版面是否终于不再显得发满、压迫。
+
+## 2026-03-13 Session Addendum (7)
+
+### Date
+- 2026-03-13
+
+### Goal
+- Keep the mobile reader text column adaptive to viewport and font size.
+- Add a user-facing setting so left and right spacing can be adjusted without changing code.
+
+### Approach
+- Keep the mobile content width driven by a readable column target instead of letting text fill the whole background area.
+- Add a persisted config field named `mobileSidePaddingOffset` and apply it on top of the adaptive mobile padding.
+- Expose the new setting in the mobile read settings panel.
+- Verify hot deployment by checking both the patched jar contents and the jar copied back from the running container.
+
+### Files Changed
+- `web/src/App.vue`
+  - Unified viewport and safe-area sync so pagination can react to safe-area updates.
+- `web/src/views/Reader.vue`
+  - Added safe-area driven re-layout hooks.
+  - Added `mobileReaderSidePaddingOffset()` and `mobileReaderAdaptiveContentWidth()`.
+  - Changed mobile reader width calculation to use adaptive width plus adjustable side padding.
+  - Unified normal and slide reading modes around `--reader-content-max-width`, `--slide-padding-left/right`, and `--slide-content-width`.
+- `web/src/components/ReadSettings.vue`
+  - Added the mobile-only side spacing control.
+  - Added min/max/step rules for `mobileSidePaddingOffset`.
+- `web/src/plugins/config.js`
+  - Added default `mobileSidePaddingOffset` values for day and night configs.
+
+### Verification
+- `npm.cmd run build` passed.
+- The running `reader` container was hot updated successfully.
+- `http://localhost:18080/` returned `HTTP 200`.
+- Live assets now point to:
+  - `app.fc3c4053.js`
+  - `reader.ed922b4c.js`
+  - `css/app.79bd1202.css`
+  - `css/reader.5cb83d51.css`
+- Live `css/reader.5cb83d51.css` contains:
+  - `max-width: var(--reader-content-max-width, 100%)`
+  - `width: var(--slide-content-width, var(--reader-content-max-width, calc(100vw - 48px)))`
+  - `padding: 0 24px`
+
+### Deployment Notes
+- This hot update was verified by checking that the patched jar already referenced the new asset names before copying it into the container.
+- After copying, the jar was exported again from `/app/bin/reader.jar` to confirm the running container was using the updated frontend instead of reporting a false-positive deployment.

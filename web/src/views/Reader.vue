@@ -628,11 +628,16 @@ export default {
       }
     },
     windowSize() {
-      this.$nextTick(() => {
-        this.computePages(() => {
-          this.showPage(this.currentPage, 0);
-        });
-      });
+      this.refreshPageLayout();
+    },
+    safeArea: {
+      handler() {
+        this.refreshPageLayout();
+      },
+      deep: true
+    },
+    mobileReaderContentMaxWidth() {
+      this.refreshPageLayout();
     },
     loginAuth(val) {
       if (val) {
@@ -762,6 +767,9 @@ export default {
     windowSize() {
       return this.$store.state.windowSize;
     },
+    safeArea() {
+      return this.$store.state.safeArea || {};
+    },
     config() {
       return this.$store.getters.config;
     },
@@ -808,11 +816,58 @@ export default {
         ? "audio"
         : "";
     },
+    mobileReaderSidePaddingOffset() {
+      return Number(this.config.mobileSidePaddingOffset) || 0;
+    },
+    mobileReaderAdaptiveContentWidth() {
+      if (!this.$store.state.miniInterface) {
+        return this.windowSize.width;
+      }
+      const safeAreaWidth =
+        this.getSafeAreaInset("left") + this.getSafeAreaInset("right");
+      const usableWidth = Math.max(this.windowSize.width - safeAreaWidth, 1);
+      const comfortWidth = Math.round(
+        (Number(this.config.fontSize) || 18) * 14 + 24
+      );
+      return Math.max(
+        Math.min(comfortWidth, usableWidth - 48, 420),
+        Math.min(usableWidth - 24, 260)
+      );
+    },
+    mobileReaderPaddingBase() {
+      if (!this.$store.state.miniInterface) {
+        return 16;
+      }
+      const safeAreaWidth =
+        this.getSafeAreaInset("left") + this.getSafeAreaInset("right");
+      const usableWidth = Math.max(this.windowSize.width - safeAreaWidth, 1);
+      const adaptivePadding = Math.max(
+        Math.round((usableWidth - this.mobileReaderAdaptiveContentWidth) / 2),
+        24
+      );
+      const maxPadding = Math.max(Math.floor((usableWidth - 180) / 2), 24);
+      return Math.max(
+        Math.min(
+          adaptivePadding + this.mobileReaderSidePaddingOffset,
+          maxPadding
+        ),
+        12
+      );
+    },
+    mobileReaderContentMaxWidth() {
+      if (!this.$store.state.miniInterface) {
+        return this.windowSize.width;
+      }
+      const safeAreaWidth =
+        this.getSafeAreaInset("left") + this.getSafeAreaInset("right");
+      const usableWidth = Math.max(this.windowSize.width - safeAreaWidth, 1);
+      return Math.max(usableWidth - this.mobileReaderPaddingBase * 2, 1);
+    },
     slidePaddingLeft() {
-      return 16 + ((this.$store.state.safeArea || {}).left | 0);
+      return this.mobileReaderPaddingBase + this.getSafeAreaInset("left");
     },
     slidePaddingRight() {
-      return 16 + ((this.$store.state.safeArea || {}).right | 0);
+      return this.mobileReaderPaddingBase + this.getSafeAreaInset("right");
     },
     slidePageWidthValue() {
       return this.slidePageWidth || this.windowSize.width;
@@ -840,6 +895,8 @@ export default {
         : {};
       const slideTheme = this.$store.state.miniInterface
         ? {
+            "--reader-content-max-width":
+              this.mobileReaderContentMaxWidth + "px",
             "--slide-padding-left": this.slidePaddingLeft + "px",
             "--slide-padding-right": this.slidePaddingRight + "px",
             "--slide-page-width": this.slidePageWidthValue + "px",
@@ -1615,6 +1672,16 @@ export default {
     toShelf() {
       this.$router.push("/");
     },
+    getSafeAreaInset(direction) {
+      return Number(this.safeArea[direction]) || 0;
+    },
+    refreshPageLayout() {
+      this.$nextTick(() => {
+        this.computePages(() => {
+          this.showPage(this.currentPage, 0);
+        });
+      });
+    },
     refreshSlideMetrics() {
       const fallbackPageWidth = this.windowSize.width;
       const fallbackContentWidth = Math.max(
@@ -1936,7 +2003,7 @@ export default {
               ? this.getFirstParagraphPos().bottom
               : 0) -
             (window.webAppDistance | 0) -
-            (this.$store.state.safeArea.top | 0),
+            this.getSafeAreaInset("top"),
           0,
           true
         );
@@ -2468,7 +2535,7 @@ export default {
               30 +
                 20 +
                 (window.webAppDistance | 0) +
-                (this.$store.state.safeArea.top | 0)
+                this.getSafeAreaInset("top")
             ) {
               currentParagraph = list[i];
               break;
@@ -2531,7 +2598,7 @@ export default {
                 ? this.getFirstParagraphPos().bottom
                 : 0) -
               (window.webAppDistance | 0) -
-              (this.$store.state.safeArea.top | 0),
+              this.getSafeAreaInset("top"),
             0
           );
         });
@@ -3068,7 +3135,7 @@ export default {
               30 +
                 20 +
                 (window.webAppDistance | 0) +
-                (this.$store.state.safeArea.top | 0) &&
+                this.getSafeAreaInset("top") &&
             elePos.bottom < this.windowSize.height
           ) {
             paragraphList.push(list[i]);
@@ -3792,12 +3859,12 @@ export default {
 
   .chapter {
     width: 100% !important;
-    // 强制固定手机模式阅读区左右间距（规避自定义目录规则触发的样式异常）
-    padding: 0 16px;
-    padding-left: calc(16px + constant(safe-area-inset-left)) !important;
-    padding-left: calc(16px + env(safe-area-inset-left)) !important;
-    padding-right: calc(16px + constant(safe-area-inset-right)) !important;
-    padding-right: calc(16px + env(safe-area-inset-right)) !important;
+    // Keep the mobile text column narrower than the full background area.
+    padding: 0 24px;
+    padding-left: var(--slide-padding-left, calc(24px + constant(safe-area-inset-left))) !important;
+    padding-left: var(--slide-padding-left, calc(24px + env(safe-area-inset-left))) !important;
+    padding-right: var(--slide-padding-right, calc(24px + constant(safe-area-inset-right))) !important;
+    padding-right: var(--slide-padding-right, calc(24px + env(safe-area-inset-right))) !important;
     box-sizing: border-box;
     border: none;
     text-align: justify;
@@ -3814,22 +3881,27 @@ export default {
       height: 30px;
       height: calc(30px + constant(safe-area-inset-top));
       height: calc(30px + env(safe-area-inset-top));
-      padding: 6px 16px;
+      padding: 6px 24px;
       padding-top: calc(6px + constant(safe-area-inset-top));
       padding-top: calc(6px + env(safe-area-inset-top));
-      padding-left: var(--slide-padding-left, calc(16px + constant(safe-area-inset-left)));
-      padding-left: var(--slide-padding-left, calc(16px + env(safe-area-inset-left)));
-      padding-right: var(--slide-padding-right, calc(16px + constant(safe-area-inset-right)));
-      padding-right: var(--slide-padding-right, calc(16px + env(safe-area-inset-right)));
+      padding-left: var(--slide-padding-left, calc(24px + constant(safe-area-inset-left)));
+      padding-left: var(--slide-padding-left, calc(24px + env(safe-area-inset-left)));
+      padding-right: var(--slide-padding-right, calc(24px + constant(safe-area-inset-right)));
+      padding-right: var(--slide-padding-right, calc(24px + env(safe-area-inset-right)));
       font-size: 12px;
     }
 
     .content-inner {
+      width: 100%;
+      max-width: var(--reader-content-max-width, 100%);
+      margin-left: auto;
+      margin-right: auto;
       margin-top: 30px;
       margin-top: calc(30px + constant(safe-area-inset-top));
       margin-top: calc(30px + env(safe-area-inset-top));
       padding-top: 15px;
       padding-bottom: 15px;
+      box-sizing: border-box;
     }
   }
 
@@ -3855,11 +3927,11 @@ export default {
       bottom: 0;
       left: 0;
       right: 0;
-      padding: 0 16px;
-      padding-left: var(--slide-padding-left, calc(16px + constant(safe-area-inset-left)));
-      padding-left: var(--slide-padding-left, calc(16px + env(safe-area-inset-left)));
-      padding-right: var(--slide-padding-right, calc(16px + constant(safe-area-inset-right)));
-      padding-right: var(--slide-padding-right, calc(16px + env(safe-area-inset-right)));
+      padding: 0 24px;
+      padding-left: var(--slide-padding-left, calc(24px + constant(safe-area-inset-left)));
+      padding-left: var(--slide-padding-left, calc(24px + env(safe-area-inset-left)));
+      padding-right: var(--slide-padding-right, calc(24px + constant(safe-area-inset-right)));
+      padding-right: var(--slide-padding-right, calc(24px + env(safe-area-inset-right)));
       padding-bottom: 6px;
       box-sizing: border-box;
       display: flex;
@@ -3883,11 +3955,12 @@ export default {
     }
 
     .content-inner {
-      width: auto;
-      margin-left: var(--slide-padding-left, calc(16px + constant(safe-area-inset-left))) !important;
-      margin-left: var(--slide-padding-left, calc(16px + env(safe-area-inset-left))) !important;
-      margin-right: var(--slide-padding-right, calc(16px + constant(safe-area-inset-right))) !important;
-      margin-right: var(--slide-padding-right, calc(16px + env(safe-area-inset-right))) !important;
+      width: var(--slide-content-width, var(--reader-content-max-width, calc(100vw - 48px))) !important;
+      max-width: none;
+      margin-left: var(--slide-padding-left, calc(24px + constant(safe-area-inset-left))) !important;
+      margin-left: var(--slide-padding-left, calc(24px + env(safe-area-inset-left))) !important;
+      margin-right: var(--slide-padding-right, calc(24px + constant(safe-area-inset-right))) !important;
+      margin-right: var(--slide-padding-right, calc(24px + env(safe-area-inset-right))) !important;
       overflow: hidden;
       text-align: justify;
       padding: 0;
@@ -3899,10 +3972,10 @@ export default {
       width: 100%;
       height: 100%;
       box-sizing: border-box;
-      -webkit-columns: var(--slide-content-width, calc(100vw - 32px)) 1;
-      -webkit-column-gap: var(--slide-column-gap, 32px);
-      columns: var(--slide-content-width, calc(100vw - 32px)) 1;
-      column-gap: var(--slide-column-gap, 32px);
+      -webkit-columns: var(--slide-content-width, calc(100vw - 48px)) 1;
+      -webkit-column-gap: var(--slide-column-gap, 48px);
+      columns: var(--slide-content-width, calc(100vw - 48px)) 1;
+      column-gap: var(--slide-column-gap, 48px);
     }
   }
 }
